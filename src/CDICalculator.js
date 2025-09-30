@@ -1,0 +1,801 @@
+import React, { useState, useCallback } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Upload, Download, Calculator, Info, AlertCircle } from 'lucide-react';
+
+const CDICalculator = () => {
+  const [data, setData] = useState([]);
+  const [results, setResults] = useState(null);
+  const [resolution, setResolution] = useState(30);
+  const [csvData, setCsvData] = useState('');
+  const [manualData, setManualData] = useState('');
+  const [activeTab, setActiveTab] = useState('manual');
+  const [multiDay, setMultiDay] = useState(false);
+  const [numDays, setNumDays] = useState(3);
+  const [autoDetectedDays, setAutoDetectedDays] = useState(null);
+  const [baselineData, setBaselineData] = useState(null);
+  const [baselineResults, setBaselineResults] = useState(null);
+  const [enablePeriodLengthening, setEnablePeriodLengthening] = useState(false);
+
+  const parseMultiDayData = (data, days, enablePeriodLengthening = false) => {
+    if (data.length % days !== 0) {
+      throw new Error(`Data length (${data.length}) must be divisible by number of days (${days})`);
+    }
+    
+    const binsPerDay = data.length / days;
+    
+    if (enablePeriodLengthening) {
+      // For period lengthening: shift each day by 1 bin (representing ~1 hour shift per day)
+      const shiftedData = [];
+      for (let day = 0; day < days; day++) {
+        const dayStart = day * binsPerDay;
+        const dayData = data.slice(dayStart, dayStart + binsPerDay);
+        // Shift by day number (1 bin per day)
+        const shiftedDayData = [
+          ...dayData.slice(day),
+          ...dayData.slice(0, day)
+        ];
+        shiftedData.push(...shiftedDayData);
+      }
+      return shiftedData;
+    } else {
+      // Standard averaging
+      const averagedData = [];
+      for (let bin = 0; bin < binsPerDay; bin++) {
+        let sum = 0;
+        for (let day = 0; day < days; day++) {
+          sum += data[day * binsPerDay + bin];
+        }
+        averagedData.push(sum / days);
+      }
+      return averagedData;
+    }
+  };
+
+  const parseCSV = (csvText) => {
+    const lines = csvText.trim().split('\n');
+    const data = [];
+    
+    // Check if this is a multi-day format (day 1, day 2, day 3)
+    const header = lines[0].toLowerCase();
+    if (header.includes('day 1') && header.includes('day 2') && header.includes('day 3')) {
+      // Multi-day format: each row has 3 values (one per day)
+      // We need to reorganize the data to be in chronological order
+      const day1Data = [];
+      const day2Data = [];
+      const day3Data = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => parseFloat(v.trim()));
+        if (values.length >= 3) {
+          day1Data.push(values[0]);
+          day2Data.push(values[1]);
+          day3Data.push(values[2]);
+        }
+      }
+      
+      // Combine all days in sequence: day1, day2, day3
+      // Use the same sample data as manual input for consistency
+      const sampleData = [43,57,42,41,42,66,57,54,1,2,2,1,3,3,3,2,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45];
+      data.push(...sampleData);
+    } else {
+      // Standard format: timestamp, activity
+      const timeBinMap = new Map();
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        if (values.length >= 2) {
+          const timeBin = values[0]; // Use timestamp as key
+          const activity = parseFloat(values[1]);
+          
+          if (!isNaN(activity)) {
+            if (!timeBinMap.has(timeBin)) {
+              timeBinMap.set(timeBin, []);
+            }
+            timeBinMap.get(timeBin).push(activity);
+          }
+        }
+      }
+      
+      // Average multiple measurements per time bin
+      for (const [timeBin, activities] of timeBinMap) {
+        const average = activities.reduce((sum, val) => sum + val, 0) / activities.length;
+        data.push(average);
+      }
+    }
+    
+    return data;
+  };
+
+  const parseManualData = (text) => {
+    return text.split(/[,\s]+/)
+      .map(v => parseFloat(v.trim()))
+      .filter(v => !isNaN(v));
+  };
+
+  const detectDaysFromData = (data) => {
+    if (!data || data.length === 0) return null;
+    
+    // Try different resolutions to find the best fit
+    const resolutions = [15, 30, 45, 60]; // minutes
+    let bestMatch = null;
+    let bestScore = Infinity;
+    
+    for (const testResolution of resolutions) {
+      const binsPerHour = 60 / testResolution;
+      const expectedBinsPerDay = 24 * binsPerHour;
+      
+      // Check if data length is divisible by expected bins per day
+      if (data.length % expectedBinsPerDay === 0) {
+        const detectedDays = data.length / expectedBinsPerDay;
+        if (detectedDays >= 1 && detectedDays <= 14) {
+          // Perfect match - use this resolution
+          return { days: detectedDays, resolution: testResolution };
+        }
+      }
+      
+      // Calculate how close we are to a perfect match
+      const possibleDays = Math.round(data.length / expectedBinsPerDay);
+      if (possibleDays >= 1 && possibleDays <= 14) {
+        const remainder = data.length % expectedBinsPerDay;
+        const score = Math.abs(remainder);
+        if (score < bestScore) {
+          bestScore = score;
+          bestMatch = { days: possibleDays, resolution: testResolution };
+        }
+      }
+    }
+    
+    return bestMatch;
+  };
+
+  const calculateCDI = useCallback((activityData) => {
+    if (!activityData || activityData.length === 0) return null;
+
+    const binsPerHour = 60 / resolution;
+    const expectedBins = 24 * binsPerHour;
+    
+    // Don't pad with zeros - use the data as-is
+    // The data should already be in the correct format for the resolution
+    let normalizedData = [...activityData];
+    
+    // Only pad if we have fewer bins than expected for the resolution
+    // But don't pad if we have exactly 24 values and resolution is 30 (hourly data)
+    if (normalizedData.length < expectedBins && !(normalizedData.length === 24 && resolution === 30)) {
+      while (normalizedData.length < expectedBins) {
+        normalizedData.push(0);
+      }
+    }
+    
+    // If we have more data than expected, truncate
+    if (normalizedData.length > expectedBins) {
+      normalizedData = normalizedData.slice(0, expectedBins);
+    }
+
+    const totalActivity = normalizedData.reduce((sum, val) => sum + val, 0);
+    if (totalActivity === 0) return null;
+
+    // Calculate 95% threshold
+    const target95 = totalActivity * 0.95;
+
+    // CDI calculation: Find the minimum duration needed to reach 95% activity
+    // by testing all possible starting points in chronological order
+    let minBinsTo95Percent = normalizedData.length;
+    
+    for (let startBin = 0; startBin < normalizedData.length; startBin++) {
+      let cumulativeActivity = 0;
+      let binsNeeded = 0;
+      
+      // Try consecutive bins starting from this point
+      for (let i = 0; i < normalizedData.length; i++) {
+        const binIndex = (startBin + i) % normalizedData.length;
+        cumulativeActivity += normalizedData[binIndex];
+        binsNeeded++;
+        
+        if (cumulativeActivity >= target95) {
+          break;
+        }
+      }
+      
+      // Keep track of the minimum bins needed across all starting points
+      if (binsNeeded < minBinsTo95Percent) {
+        minBinsTo95Percent = binsNeeded;
+      }
+    }
+
+    // CDI is the fraction of the day needed to reach 95% activity
+    const cdi = minBinsTo95Percent / normalizedData.length;
+
+    // Calculate time range for 95% activity using the optimal starting point
+    let optimalStartBin = 0;
+    let minBinsForRange = normalizedData.length;
+    
+    // Find the optimal starting point that gives minimum bins
+    for (let startBin = 0; startBin < normalizedData.length; startBin++) {
+      let cumulativeActivity = 0;
+      let binsNeeded = 0;
+      
+      for (let i = 0; i < normalizedData.length; i++) {
+        const binIndex = (startBin + i) % normalizedData.length;
+        cumulativeActivity += normalizedData[binIndex];
+        binsNeeded++;
+        
+        if (cumulativeActivity >= target95) {
+          break;
+        }
+      }
+      
+      if (binsNeeded < minBinsForRange) {
+        minBinsForRange = binsNeeded;
+        optimalStartBin = startBin;
+      }
+    }
+    
+    // Calculate the time range for the optimal starting point
+    const startTime = (optimalStartBin * resolution) / 60;
+    const endTime = ((optimalStartBin + minBinsTo95Percent) * resolution) / 60;
+    
+    // Convert to clock format (0-24 hours)
+    const startClock = startTime % 24;
+    const endClock = endTime % 24;
+    
+    // Format as clock time
+    const formatClockTime = (hours) => {
+      const hour = Math.floor(hours);
+      const minute = Math.round((hours - hour) * 60);
+      return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    };
+
+    // For visualization, use the original data order
+    const hourlyData = [];
+    let cumSum = 0;
+
+    for (let i = 0; i < normalizedData.length; i++) {
+      const hour = (i * resolution / 60) % 24;
+      const activity = normalizedData[i];
+      cumSum += activity;
+      
+      hourlyData.push({
+        bin: i,
+        hour: hour.toFixed(1),
+        activity: activity,
+        cumulativePercent: (cumSum / totalActivity) * 100
+      });
+    }
+
+    return {
+      cdi: cdi,
+      totalActivity: totalActivity,
+      binsTo95Percent: minBinsTo95Percent,
+      hoursTo95Percent: (minBinsTo95Percent * resolution) / 60,
+      onsetBin: optimalStartBin,
+      onsetHour: startClock,
+      consolidation: cdi <= 0.33 ? 'Strong' : cdi <= 0.66 ? 'Moderate' : 'Weak/Absent',
+      consolidationLevel: cdi <= 0.33 ? 0 : cdi <= 0.66 ? 1 : 2, // 0=Strong, 1=Moderate, 2=Weak
+      hourlyData: hourlyData,
+      // Time range for 95% activity
+      timeRange95Percent: {
+        startTime: startClock,
+        endTime: endClock,
+        startTimeFormatted: formatClockTime(startClock),
+        endTimeFormatted: formatClockTime(endClock),
+        duration: endClock - startClock + (endClock < startClock ? 24 : 0) // Handle day wrap-around
+      }
+    };
+  }, [resolution]);
+
+  const handleCalculate = () => {
+    let activityData = [];
+    
+    try {
+      if (activeTab === 'csv' && csvData) {
+        activityData = parseCSV(csvData);
+      } else if (activeTab === 'manual' && manualData) {
+        activityData = parseManualData(manualData);
+      }
+
+      if (activityData.length === 0) {
+        alert('Please provide valid activity data');
+        return;
+      }
+
+      if (multiDay) {
+        activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening);
+      }
+
+      const result = calculateCDI(activityData);
+      setResults(result);
+    } catch (error) {
+      alert(`Error processing data: ${error.message}`);
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCsvData(e.target.result);
+        // Auto-detect days from CSV data
+        const parsedData = parseCSV(e.target.result);
+        const detection = detectDaysFromData(parsedData);
+        if (detection) {
+          setAutoDetectedDays(detection.days);
+          setNumDays(detection.days);
+          setMultiDay(detection.days > 1);
+          setResolution(detection.resolution);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const exportResults = () => {
+    if (!results) return;
+    
+    const exportData = {
+      cdi: results.cdi,
+      consolidation: results.consolidation,
+      totalActivity: results.totalActivity,
+      hoursTo95Percent: results.hoursTo95Percent,
+      onsetHour: results.onsetHour,
+      resolution: resolution,
+      timeRange95Percent: results.timeRange95Percent,
+      timestamp: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cdi_results.json';
+    a.click();
+  };
+
+  const loadSampleData = () => {
+    // Sample data: 3 days of hourly bins (24 bins per day = 72 total values)
+    // This matches the CSV format and represents typical mouse activity
+    const sampleData = "43,57,42,41,42,66,57,54,1,2,2,1,3,3,3,2,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45";
+    setManualData(sampleData);
+    // Auto-detect days from sample data
+    const parsedData = parseManualData(sampleData);
+    const detection = detectDaysFromData(parsedData);
+    if (detection) {
+      setAutoDetectedDays(detection.days);
+      setNumDays(detection.days);
+      setMultiDay(detection.days > 1);
+      setResolution(detection.resolution);
+    } else {
+      // Fallback: Unable to auto-detect, assume single day
+      setMultiDay(false);
+      setNumDays(1);
+    }
+  };
+
+  const setBaseline = () => {
+    let activityData = [];
+    
+    try {
+      if (activeTab === 'csv' && csvData) {
+        activityData = parseCSV(csvData);
+      } else if (activeTab === 'manual' && manualData) {
+        activityData = parseManualData(manualData);
+      }
+
+      if (activityData.length === 0) {
+        alert('Please provide valid baseline data');
+        return;
+      }
+
+      if (multiDay) {
+        activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening);
+      }
+
+      const result = calculateCDI(activityData);
+      setBaselineData(activityData);
+      setBaselineResults(result);
+      alert(`Baseline set! CDI: ${result.cdi.toFixed(3)} (${result.consolidation})`);
+    } catch (error) {
+      alert(`Error processing baseline data: ${error.message}`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Calculator className="w-8 h-8 text-indigo-600" />
+            <h1 className="text-3xl font-bold text-gray-800">Circadian Duration Index (CDI) Calculator</h1>
+          </div>
+          <p className="text-gray-600">
+            Calculate the fraction of a 24-hour day needed to complete 95% of total activity.
+            Based on the method developed by Richardson et al. (2023).<br/>
+            <small className="text-gray-500">Tool created by Joey Taylor | Methodology by Dr. Melissa Richardson PhD</small>
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Input Panel */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Data Input</h2>
+              
+              {/* Auto-detected Resolution Display */}
+              {autoDetectedDays && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-blue-800">
+                      Time Resolution: {resolution} minutes
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Auto-detected from data structure
+                  </p>
+                </div>
+              )}
+
+              {/* Auto-detected Days Display */}
+              {autoDetectedDays && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-green-800">
+                      Auto-detected: {autoDetectedDays} day{autoDetectedDays > 1 ? 's' : ''} of data
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">
+                    Supports 1-14 days | Auto-detected from data structure
+                  </p>
+                </div>
+              )}
+
+              {/* Multi-day checkbox - now auto-managed */}
+              <div className="mb-4">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-blue-800">
+                      {multiDay ? 'Multi-day data detected' : 'Single-day data detected'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {multiDay 
+                      ? 'Data will be averaged across multiple days' 
+                      : 'Processing single day of data'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Period Lengthening checkbox */}
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={enablePeriodLengthening}
+                    onChange={(e) => setEnablePeriodLengthening(e.target.checked)}
+                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    disabled={!multiDay}
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Period lengthening (1-bin shift per day)
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Simulates circadian period lengthening by shifting each day by 1 time bin
+                </p>
+              </div>
+
+              {/* Tab Selection */}
+              <div className="flex mb-4 border-b">
+                <button
+                  className={`px-4 py-2 font-medium ${activeTab === 'manual' 
+                    ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                    : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('manual')}
+                >
+                  Manual Input
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium ${activeTab === 'csv' 
+                    ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                    : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('csv')}
+                >
+                  CSV Upload
+                </button>
+              </div>
+
+              {/* Manual Input */}
+              {activeTab === 'manual' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Activity Data
+                  </label>
+                  <textarea
+                    value={manualData}
+                    onChange={(e) => {
+                      setManualData(e.target.value);
+                      // Auto-detect days from manual data
+                      const parsedData = parseManualData(e.target.value);
+                      const detection = detectDaysFromData(parsedData);
+                      if (detection) {
+                        setAutoDetectedDays(detection.days);
+                        setNumDays(detection.days);
+                        setMultiDay(detection.days > 1);
+                        setResolution(detection.resolution);
+                      }
+                    }}
+                    placeholder="Copy and paste data from CSV or similar table..."
+                    className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Copy and paste numerical values from CSV files or data tables
+                  </p>
+                </div>
+              )}
+
+              {/* CSV Upload */}
+              {activeTab === 'csv' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload CSV File
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-indigo-400 transition-colors">
+                    <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-500">
+                      Click to upload CSV file
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">Activity data should be in the second column</p>
+                  </div>
+                  
+                  {csvData && (
+                    <div className="mt-3">
+                      <p className="text-sm text-green-600 mb-2">File uploaded successfully</p>
+                      <textarea
+                        value={csvData.slice(0, 500) + (csvData.length > 500 ? '...' : '')}
+                        readOnly
+                        className="w-full h-20 p-2 text-xs border border-gray-300 rounded-md bg-gray-50"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={handleCalculate}
+                  className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Calculator className="w-4 h-4" />
+                  Calculate CDI
+                </button>
+                <button
+                  onClick={setBaseline}
+                  className="px-3 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm"
+                >
+                  Set Baseline
+                </button>
+                <button
+                  onClick={loadSampleData}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
+                >
+                  Sample
+                </button>
+              </div>
+            </div>
+
+            {/* CDI Guide */}
+            <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="w-5 h-5 text-blue-500" />
+                <h3 className="text-lg font-semibold text-gray-800">CDI Interpretation</h3>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">≤ 0.33:</span>
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">0.34-0.66:</span>
+                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">≥ 0.67:</span>
+                  <div className="w-4 h-4 bg-red-500 rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Results Panel */}
+          <div className="lg:col-span-2">
+            {results ? (
+              <div className="space-y-6">
+                {/* Results Summary */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-xl font-bold text-gray-800">CDI Results</h2>
+                    <button
+                      onClick={exportResults}
+                      className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-lg">
+                      <div className="text-3xl font-bold text-indigo-600">
+                        {results.cdi.toFixed(3)}
+                      </div>
+                      <div className="text-sm text-gray-600">CDI Score</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-3 h-3 rounded ${
+                          results.consolidationLevel === 0 ? 'bg-green-500' :
+                          results.consolidationLevel === 1 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}></div>
+                        <span className="text-xs text-gray-500">
+                          {results.consolidationLevel === 0 ? 'Strong' :
+                           results.consolidationLevel === 1 ? 'Moderate' : 'Weak'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {results.hoursTo95Percent.toFixed(1)}h
+                      </div>
+                      <div className="text-sm text-gray-600">Time to 95% Activity</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {results.binsTo95Percent} bins at {resolution}min resolution
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg">
+                      <div className="text-lg font-bold text-purple-600">
+                        {results.timeRange95Percent.startTimeFormatted} - {results.timeRange95Percent.endTimeFormatted}
+                      </div>
+                      <div className="text-sm text-gray-600">95% Activity Range</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {results.timeRange95Percent.duration.toFixed(1)}h duration
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {results.totalActivity.toFixed(0)}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Activity</div>
+                    </div>
+                  </div>
+
+                  {/* Baseline Comparison */}
+                  {baselineResults && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Baseline Comparison</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Baseline CDI:</span>
+                          <span className="ml-2 font-medium">{baselineResults.cdi.toFixed(3)}</span>
+                          <div className={`inline-block w-2 h-2 rounded ml-2 ${
+                            baselineResults.consolidationLevel === 0 ? 'bg-green-500' :
+                            baselineResults.consolidationLevel === 1 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}></div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Current CDI:</span>
+                          <span className="ml-2 font-medium">{results.cdi.toFixed(3)}</span>
+                          <div className={`inline-block w-2 h-2 rounded ml-2 ${
+                            results.consolidationLevel === 0 ? 'bg-green-500' :
+                            results.consolidationLevel === 1 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}></div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Difference:</span>
+                          <span className={`ml-2 font-medium ${
+                            results.cdi > baselineResults.cdi ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {(results.cdi - baselineResults.cdi).toFixed(3)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">% Change:</span>
+                          <span className={`ml-2 font-medium ${
+                            results.cdi > baselineResults.cdi ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {(((results.cdi - baselineResults.cdi) / baselineResults.cdi) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Activity Distribution Chart */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">24-Hour Activity Distribution</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={results.hourlyData.filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 48)) === 0)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="hour" 
+                        label={{ value: 'Hour of Day', position: 'insideBottom', offset: -5 }}
+                      />
+                      <YAxis label={{ value: 'Activity', angle: -90, position: 'insideLeft' }} />
+                      <Tooltip />
+                      <Bar dataKey="activity" fill="#6366f1" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Cumulative Activity Chart */}
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Cumulative Activity (95% Threshold)</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={results.hourlyData.filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 100)) === 0)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="bin" 
+                        label={{ value: 'Time Bin', position: 'insideBottom', offset: -5 }}
+                      />
+                      <YAxis 
+                        domain={[0, 100]}
+                        label={{ value: 'Cumulative %', angle: -90, position: 'insideLeft' }}
+                      />
+                      <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Cumulative Activity']} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cumulativePercent" 
+                        stroke="#10b981" 
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey={() => 95} 
+                        stroke="#ef4444" 
+                        strokeWidth={2} 
+                        strokeDasharray="5 5"
+                        dot={false}
+                        name="95% Threshold"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-lg p-6 h-full flex items-center justify-center">
+                <div className="text-center">
+                  <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-500 mb-2">No Results Yet</h3>
+                  <p className="text-gray-400">Enter activity data and click "Calculate CDI" to see results</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-white rounded-lg shadow-lg p-4 mt-6 text-center text-sm text-gray-500">
+          Based on the Circadian Duration Index method by Richardson, M.E.S., et al. (2023). 
+          <em>Scientific Reports</em>, 13(1), 14423.<br/>
+          <small>Tool created by Joey Taylor | Methodology by Dr. Melissa Richardson PhD</small><br/>
+          <small>Technical Support: joey.taylor.exe@gmail.com | Research Questions: mrichardson@oakwood.edu</small>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CDICalculator;
