@@ -21,7 +21,7 @@ const CDICalculator = () => {
   const [enableCustomThresholds, setEnableCustomThresholds] = useState(false);
   const [strongThreshold, setStrongThreshold] = useState(0.33);
   const [moderateThreshold, setModerateThreshold] = useState(0.66);
-  const [hourShiftPerDay, setHourShiftPerDay] = useState(1);
+  const [hourShiftPerDay, setHourShiftPerDay] = useState(0);
   const [autoCalculateShift, setAutoCalculateShift] = useState(false);
   const [thresholdError, setThresholdError] = useState('');
 
@@ -69,24 +69,22 @@ const CDICalculator = () => {
     const header = lines[0].toLowerCase();
     if (header.includes('day 1') && header.includes('day 2') && header.includes('day 3')) {
       // Multi-day format: each row has 3 values (one per day)
-      // We need to reorganize the data to be in chronological order
+      // Reorganize data in chronological order: day1, day2, day3
       const day1Data = [];
       const day2Data = [];
       const day3Data = [];
-      
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => parseFloat(v.trim()));
-        if (values.length >= 3) {
+        const values = lines[i].split(/[\t,]+/).map(v => parseFloat(v.trim()));
+        if (values.length >= 3 && !isNaN(values[0]) && !isNaN(values[1]) && !isNaN(values[2])) {
           day1Data.push(values[0]);
           day2Data.push(values[1]);
           day3Data.push(values[2]);
         }
       }
-      
-      // Combine all days in sequence: day1, day2, day3
-      // Use the same sample data as manual input for consistency
-      const sampleData = [43,57,42,41,42,66,57,54,1,2,2,1,3,3,3,2,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45];
-      data.push(...sampleData);
+
+      // Combine all days in chronological sequence: day1, then day2, then day3
+      data.push(...day1Data, ...day2Data, ...day3Data);
     } else {
       // Standard format: timestamp, activity
       const timeBinMap = new Map();
@@ -191,7 +189,24 @@ const CDICalculator = () => {
       // Free-running phase shift: each day shifts by (period - 24) hours
       return customPeriod - 24;
     }
+    // If phase shift is enabled but no custom period, use manual shift
+    // BUT warn user if shift is non-zero with 24h period
     return hourShiftPerDay;
+  };
+
+  // Check if phase shift configuration makes sense
+  const isPhaseShiftValid = () => {
+    if (!enablePeriodLengthening) return true;
+
+    // Auto-calculate requires custom period
+    if (autoCalculateShift && !enableCustomPeriod) return false;
+
+    // Manual shift with 24h period should be 0 (or user knows what they're doing)
+    if (!autoCalculateShift && !enableCustomPeriod && hourShiftPerDay !== 0) {
+      return true; // Allow but it's unusual
+    }
+
+    return true;
   };
 
   // ClockLab-inspired circadian period detection using autocorrelation
@@ -689,6 +704,22 @@ const CDICalculator = () => {
 
                 {enablePeriodLengthening && multiDay && (
                   <div className="mt-2 space-y-2">
+                    {/* Warning if no custom period set */}
+                    {!enableCustomPeriod && (
+                      <div className="p-2 bg-yellow-50 border border-yellow-300 rounded-md">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-yellow-800">Phase shift requires custom period</p>
+                            <p className="text-xs text-yellow-700 mt-1">
+                              Enable "Custom circadian period" below to use phase shift properly.
+                              Phase shift aligns data for free-running rhythms (non-24h periods).
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Auto-calculate from period */}
                     <label className="flex items-center">
                       <input
@@ -711,32 +742,34 @@ const CDICalculator = () => {
                         <input
                           type="number"
                           value={hourShiftPerDay}
-                          onChange={(e) => setHourShiftPerDay(parseFloat(e.target.value) || 1)}
+                          onChange={(e) => setHourShiftPerDay(parseFloat(e.target.value) || 0)}
                           min="-12"
                           max="12"
                           step="0.1"
                           className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Manual override: {hourShiftPerDay > 0 ? '+' : ''}{hourShiftPerDay}h shift/day
+                          Manual: {hourShiftPerDay > 0 ? '+' : ''}{hourShiftPerDay.toFixed(2)}h shift/day
                         </p>
                       </div>
                     )}
 
                     {/* Display effective shift */}
-                    <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
-                      <p className="text-xs text-purple-800">
-                        <strong>Effective shift: {getEffectiveHourShift() > 0 ? '+' : ''}{getEffectiveHourShift().toFixed(2)}h/day</strong>
-                        {autoCalculateShift && enableCustomPeriod && (
-                          <span className="block mt-1 text-purple-600">
-                            Calculated from period: {customPeriod}h - 24h = {(customPeriod - 24).toFixed(2)}h
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-purple-600 mt-1">
-                        Based on free-running phase shift model: Δφ = τ - 24h
-                      </p>
-                    </div>
+                    {enableCustomPeriod && (
+                      <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
+                        <p className="text-xs text-purple-800">
+                          <strong>Effective shift: {getEffectiveHourShift() > 0 ? '+' : ''}{getEffectiveHourShift().toFixed(2)}h/day</strong>
+                          {autoCalculateShift && (
+                            <span className="block mt-1 text-purple-600">
+                              Calculated: {customPeriod}h - 24h = {(customPeriod - 24).toFixed(2)}h
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-purple-600 mt-1">
+                          Free-running phase shift: Δφ = τ - 24h
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -903,7 +936,7 @@ const CDICalculator = () => {
               </div>
             </div>
 
-            {/* CDI Guide */}
+              {/* CDI Guide */}
             <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
               <div className="flex items-center gap-2 mb-3">
                 <Info className="w-5 h-5 text-blue-500" />
@@ -921,61 +954,82 @@ const CDICalculator = () => {
               )}
 
               <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
+                {/* Strong threshold */}
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-500 rounded flex-shrink-0"></div>
+                  <div className="flex items-center gap-1 flex-1">
                     <span className="font-medium">≤</span>
                     <input
                       type="text"
                       value={strongThreshold}
-                      onChange={(e) => handleStrongThresholdChange(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow empty string for backspacing
+                        if (value === '') {
+                          setStrongThreshold('');
+                          setThresholdError('');
+                          return;
+                        }
+                        handleStrongThresholdChange(value);
+                      }}
                       onBlur={(e) => {
-                        // Reset to default if invalid on blur
-                        if (e.target.value === '' || parseFloat(e.target.value) <= 0) {
+                        // Reset to default only if empty
+                        if (e.target.value === '') {
                           setStrongThreshold(0.33);
                           setThresholdError('');
                         }
                       }}
-                      className="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
                     />
-                    <span className="font-medium">:</span>
+                    <span className="text-xs text-gray-500 ml-2">Strong consolidation</span>
                   </div>
-                  <div className="w-4 h-4 bg-green-500 rounded flex-shrink-0"></div>
-                  <span className="text-xs text-gray-500 flex-1">Strong consolidation</span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <span className="font-medium text-xs">{(strongThreshold + 0.01).toFixed(2)}</span>
+                {/* Moderate threshold */}
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-500 rounded flex-shrink-0"></div>
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="font-medium text-xs">{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
                     <span className="font-medium">-</span>
                     <input
                       type="text"
                       value={moderateThreshold}
-                      onChange={(e) => handleModerateThresholdChange(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow empty string for backspacing
+                        if (value === '') {
+                          setModerateThreshold('');
+                          setThresholdError('');
+                          return;
+                        }
+                        handleModerateThresholdChange(value);
+                      }}
                       onBlur={(e) => {
-                        // Reset to default if invalid on blur
-                        if (e.target.value === '' || parseFloat(e.target.value) <= 0) {
+                        // Reset to default only if empty
+                        if (e.target.value === '') {
                           setModerateThreshold(0.66);
                           setThresholdError('');
                         }
                       }}
-                      className="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
                     />
-                    <span className="font-medium">:</span>
+                    <span className="text-xs text-gray-500 ml-2">Moderate consolidation</span>
                   </div>
-                  <div className="w-4 h-4 bg-yellow-500 rounded flex-shrink-0"></div>
-                  <span className="text-xs text-gray-500 flex-1">Moderate consolidation</span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="font-medium w-24">≥ {(moderateThreshold + 0.01).toFixed(2)}:</span>
+                {/* Weak threshold */}
+                <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-red-500 rounded flex-shrink-0"></div>
-                  <span className="text-xs text-gray-500 flex-1">Weak/absent consolidation</span>
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="font-medium">≥ {moderateThreshold ? (parseFloat(moderateThreshold) + 0.01).toFixed(2) : '0.67'}</span>
+                    <span className="text-xs text-gray-500 ml-2">Weak/absent consolidation</span>
+                  </div>
                 </div>
               </div>
 
               <div className="mt-3 p-2 bg-gray-50 rounded-md">
                 <p className="text-xs text-gray-600">
-                  <strong>Click on threshold values to customize.</strong> Valid range: 0.0001-1.0000 (max 4 decimals)
+                  <strong>Click threshold values to edit.</strong> Valid range: 0.0001-1.0000 (max 4 decimals)
                 </p>
               </div>
 
