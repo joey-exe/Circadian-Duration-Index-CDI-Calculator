@@ -162,11 +162,15 @@ The calculator automatically:
 
 ### CDI Calculation
 
-The calculator automatically:
-- Tests all possible starting points chronologically to find minimum duration for 95% activity
-- Calculates the CDI score based on optimal arrangement
+The calculator uses a **truly circular algorithm** that:
+- Tests **all possible starting points** around the full 24-hour cycle (circular data handling)
+- Wraps around from end to beginning, treating midnight as a continuous point
+- Finds the minimum consecutive duration needed to capture 95% of total activity
+- Calculates the CDI score as: `CDI = (minimum bins to 95%) / (total bins in period)`
 - Provides detailed results including consolidation classification
 - Supports period lengthening for circadian rhythm analysis
+
+**Why Circular?** Circadian rhythms are cyclical by nature. Activity patterns can span across midnight, so the algorithm must consider the data as a continuous cycle, not a linear sequence. This ensures accurate CDI calculations for all activity patterns, including those with peaks near midnight.
 
 ### Advanced Features
 
