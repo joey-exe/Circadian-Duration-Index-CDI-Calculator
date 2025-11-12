@@ -18,24 +18,29 @@ const CDICalculator = () => {
   const [customPeriod, setCustomPeriod] = useState(24);
   const [enableCustomPeriod, setEnableCustomPeriod] = useState(false);
   const [detectedPeriod, setDetectedPeriod] = useState(null);
+  const [enableCustomThresholds, setEnableCustomThresholds] = useState(false);
+  const [strongThreshold, setStrongThreshold] = useState(0.33);
+  const [moderateThreshold, setModerateThreshold] = useState(0.66);
+  const [hourShiftPerDay, setHourShiftPerDay] = useState(1);
 
-  const parseMultiDayData = (data, days, enablePeriodLengthening = false) => {
+  const parseMultiDayData = (data, days, enablePeriodLengthening = false, shiftBinsPerDay = 1) => {
     if (data.length % days !== 0) {
       throw new Error(`Data length (${data.length}) must be divisible by number of days (${days})`);
     }
-    
+
     const binsPerDay = data.length / days;
-    
+
     if (enablePeriodLengthening) {
-      // For period lengthening: shift each day by 1 bin (representing ~1 hour shift per day)
+      // For period lengthening: shift each day by specified number of bins
       const shiftedData = [];
       for (let day = 0; day < days; day++) {
         const dayStart = day * binsPerDay;
         const dayData = data.slice(dayStart, dayStart + binsPerDay);
-        // Shift by day number (1 bin per day)
+        // Shift by day number * bins per day
+        const shiftAmount = (day * shiftBinsPerDay) % binsPerDay;
         const shiftedDayData = [
-          ...dayData.slice(day),
-          ...dayData.slice(0, day)
+          ...dayData.slice(shiftAmount),
+          ...dayData.slice(0, shiftAmount)
         ];
         shiftedData.push(...shiftedDayData);
       }
@@ -271,8 +276,17 @@ const CDICalculator = () => {
     const totalActivity = normalizedData.reduce((sum, val) => sum + val, 0);
     if (totalActivity === 0) return null;
 
-    // Calculate 95% threshold
-    const target95 = totalActivity * 0.95;
+    // Sort activity values to find the bottom 5% threshold
+    const sortedActivities = [...normalizedData].sort((a, b) => a - b);
+    const bottom5PercentIndex = Math.floor(sortedActivities.length * 0.05);
+    const bottom5Threshold = sortedActivities[bottom5PercentIndex];
+
+    // Filter out bins below the bottom 5% threshold
+    const filteredData = normalizedData.map(val => val > bottom5Threshold ? val : 0);
+    const filteredTotalActivity = filteredData.reduce((sum, val) => sum + val, 0);
+
+    // Calculate 95% of filtered activity
+    const target95 = filteredTotalActivity * 0.95;
 
     // Find consistent activity start point (where activity begins) - for reference only
     const consistentStartBin = findConsistentActivityStart(normalizedData);
@@ -283,14 +297,14 @@ const CDICalculator = () => {
     let optimalStartBin = 0;
 
     // Test EVERY possible starting point around the full cycle (truly circular)
-    for (let startBin = 0; startBin < normalizedData.length; startBin++) {
+    for (let startBin = 0; startBin < filteredData.length; startBin++) {
       let cumulativeActivity = 0;
       let binsNeeded = 0;
 
       // Try consecutive bins starting from this point, wrapping around
-      for (let i = 0; i < normalizedData.length; i++) {
-        const binIndex = (startBin + i) % normalizedData.length;
-        cumulativeActivity += normalizedData[binIndex];
+      for (let i = 0; i < filteredData.length; i++) {
+        const binIndex = (startBin + i) % filteredData.length;
+        cumulativeActivity += filteredData[binIndex];
         binsNeeded++;
 
         if (cumulativeActivity >= target95) {
@@ -334,11 +348,15 @@ const CDICalculator = () => {
       
       hourlyData.push({
         bin: i,
-        hour: hour.toFixed(1),
+        hour: Math.round(hour),
         activity: activity,
         cumulativePercent: (cumSum / totalActivity) * 100
       });
     }
+
+    // Use custom thresholds if enabled
+    const threshold1 = enableCustomThresholds ? strongThreshold : 0.33;
+    const threshold2 = enableCustomThresholds ? moderateThreshold : 0.66;
 
     return {
       cdi: cdi,
@@ -347,8 +365,8 @@ const CDICalculator = () => {
       hoursTo95Percent: (minBinsTo95Percent * resolution) / 60,
       onsetBin: optimalStartBin,
       onsetHour: startClock,
-      consolidation: cdi <= 0.33 ? 'Strong' : cdi <= 0.66 ? 'Moderate' : 'Weak/Absent',
-      consolidationLevel: cdi <= 0.33 ? 0 : cdi <= 0.66 ? 1 : 2, // 0=Strong, 1=Moderate, 2=Weak
+      consolidation: cdi <= threshold1 ? 'Strong' : cdi <= threshold2 ? 'Moderate' : 'Weak/Absent',
+      consolidationLevel: cdi <= threshold1 ? 0 : cdi <= threshold2 ? 1 : 2, // 0=Strong, 1=Moderate, 2=Weak
       hourlyData: hourlyData,
       periodHours: periodHours,
       consistentStartBin: consistentStartBin,
@@ -359,9 +377,13 @@ const CDICalculator = () => {
         startTimeFormatted: formatClockTime(startClock),
         endTimeFormatted: formatClockTime(endClock),
         duration: endClock - startClock + (endClock < startClock ? periodHours : 0) // Handle period wrap-around
+      },
+      thresholds: {
+        strong: threshold1,
+        moderate: threshold2
       }
     };
-  }, [resolution, customPeriod, enableCustomPeriod]);
+  }, [resolution, customPeriod, enableCustomPeriod, enableCustomThresholds, strongThreshold, moderateThreshold]);
 
   const handleCalculate = () => {
     let activityData = [];
@@ -379,7 +401,10 @@ const CDICalculator = () => {
       }
 
       if (multiDay) {
-        activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening);
+        // Calculate bins per hour for shift conversion
+        const binsPerHour = 60 / resolution;
+        const shiftBins = Math.round(hourShiftPerDay * binsPerHour);
+        activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening, shiftBins);
       }
 
       // Detect circadian period for multi-day data
@@ -481,7 +506,10 @@ const CDICalculator = () => {
       }
 
       if (multiDay) {
-        activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening);
+        // Calculate bins per hour for shift conversion
+        const binsPerHour = 60 / resolution;
+        const shiftBins = Math.round(hourShiftPerDay * binsPerHour);
+        activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening, shiftBins);
       }
 
       const result = calculateCDI(activityData);
@@ -576,12 +604,32 @@ const CDICalculator = () => {
                     disabled={!multiDay}
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Period lengthening (1-bin shift per day)
+                    Enable hour shift per day
                   </span>
                 </label>
                 <p className="text-xs text-gray-500 mt-1">
-                  Simulates circadian period lengthening by shifting each day by 1 time bin
+                  Simulates circadian period changes by shifting each day
                 </p>
+
+                {enablePeriodLengthening && multiDay && (
+                  <div className="mt-2">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Hour shift per day:
+                    </label>
+                    <input
+                      type="number"
+                      value={hourShiftPerDay}
+                      onChange={(e) => setHourShiftPerDay(parseFloat(e.target.value) || 1)}
+                      min="0"
+                      max="24"
+                      step="0.5"
+                      className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Each day will be shifted by {hourShiftPerDay} hour(s)
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Custom Period Settings */}
@@ -639,6 +687,60 @@ const CDICalculator = () => {
                   </p>
                 </div>
               )}
+
+              {/* Custom Threshold Settings */}
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={enableCustomThresholds}
+                    onChange={(e) => setEnableCustomThresholds(e.target.checked)}
+                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Custom CDI thresholds
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Customize consolidation classification thresholds
+                </p>
+
+                {enableCustomThresholds && (
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Strong consolidation threshold (≤):
+                      </label>
+                      <input
+                        type="number"
+                        value={strongThreshold}
+                        onChange={(e) => setStrongThreshold(parseFloat(e.target.value) || 0.33)}
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Moderate consolidation threshold (≤):
+                      </label>
+                      <input
+                        type="number"
+                        value={moderateThreshold}
+                        onChange={(e) => setModerateThreshold(parseFloat(e.target.value) || 0.66)}
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Default: ≤{strongThreshold.toFixed(2)} (Strong), ≤{moderateThreshold.toFixed(2)} (Moderate), &gt;{moderateThreshold.toFixed(2)} (Weak)
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Tab Selection */}
               <div className="flex mb-4 border-b">
@@ -753,20 +855,20 @@ const CDICalculator = () => {
                 <h3 className="text-lg font-semibold text-gray-800">CDI Interpretation</h3>
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">≤ 0.33:</span>
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span className="text-xs text-gray-500">Strong consolidation</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium w-24">≤ {enableCustomThresholds ? strongThreshold.toFixed(2) : '0.33'}:</span>
+                  <div className="w-4 h-4 bg-green-500 rounded flex-shrink-0"></div>
+                  <span className="text-xs text-gray-500 flex-1">Strong consolidation</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">0.34-0.66:</span>
-                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                  <span className="text-xs text-gray-500">Moderate consolidation</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium w-24">{enableCustomThresholds ? (strongThreshold + 0.01).toFixed(2) : '0.34'}-{enableCustomThresholds ? moderateThreshold.toFixed(2) : '0.66'}:</span>
+                  <div className="w-4 h-4 bg-yellow-500 rounded flex-shrink-0"></div>
+                  <span className="text-xs text-gray-500 flex-1">Moderate consolidation</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">≥ 0.67:</span>
-                  <div className="w-4 h-4 bg-red-500 rounded"></div>
-                  <span className="text-xs text-gray-500">Weak/absent consolidation</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium w-24">≥ {enableCustomThresholds ? (moderateThreshold + 0.01).toFixed(2) : '0.67'}:</span>
+                  <div className="w-4 h-4 bg-red-500 rounded flex-shrink-0"></div>
+                  <span className="text-xs text-gray-500 flex-1">Weak/absent consolidation</span>
                 </div>
               </div>
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
@@ -818,7 +920,7 @@ const CDICalculator = () => {
                     
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
-                        {results.hoursTo95Percent.toFixed(1)}h
+                        {Math.round(results.hoursTo95Percent)}h
                       </div>
                       <div className="text-sm text-gray-600">Time to 95% Activity</div>
                       <div className="text-sm text-gray-500 mt-1">
@@ -832,7 +934,7 @@ const CDICalculator = () => {
                       </div>
                       <div className="text-sm text-gray-600">95% Activity Range</div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {results.timeRange95Percent.duration.toFixed(1)}h duration
+                        {Math.round(results.timeRange95Percent.duration)}h duration
                       </div>
                     </div>
                     
@@ -845,7 +947,7 @@ const CDICalculator = () => {
                     
                     <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-lg">
                       <div className="text-lg font-bold text-teal-600">
-                        {results.periodHours.toFixed(1)}h
+                        {Math.round(results.periodHours)}h
                       </div>
                       <div className="text-sm text-gray-600">Circadian Period</div>
                       <div className="text-xs text-gray-500 mt-1">
@@ -899,7 +1001,7 @@ const CDICalculator = () => {
                 {/* Activity Distribution Chart */}
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    {results.periodHours.toFixed(1)}-Hour Activity Distribution
+                    {Math.round(results.periodHours)}-Hour Activity Distribution
                   </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={results.hourlyData.filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 48)) === 0)}>
