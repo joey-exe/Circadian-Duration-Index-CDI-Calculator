@@ -3,6 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Upload, Download, Calculator, Info, AlertCircle } from 'lucide-react';
 
 const CDICalculator = () => {
+  const APP_VERSION = '3.0.0';
+
   const [data, setData] = useState([]);
   const [results, setResults] = useState(null);
   const [resolution, setResolution] = useState(30);
@@ -620,10 +622,13 @@ const CDICalculator = () => {
           <div className="flex items-center gap-3 mb-4">
             <Calculator className="w-8 h-8 text-indigo-600" />
             <h1 className="text-3xl font-bold text-gray-800">Circadian Duration Index (CDI) Calculator</h1>
+            <span className="ml-auto px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-full">
+              v{APP_VERSION}
+            </span>
           </div>
           <p className="text-gray-600">
             Calculate the fraction of a circadian period needed to complete 95% of total activity.
-            Supports both 24-hour and custom circadian periods (20-28h). Features ClockLab-compatible 
+            Supports both 24-hour and custom circadian periods (20-28h). Features ClockLab-compatible
             period detection and enhanced activity start point detection.<br/>
             Based on the method developed by Richardson et al. (2023).<br/>
             <small className="text-gray-500">Tool created by Yeshuwa Taylor | Methodology by Dr. Melissa E. Richardson PhD</small>
