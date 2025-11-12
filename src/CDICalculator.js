@@ -1010,7 +1010,9 @@ const CDICalculator = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-green-500 rounded flex-shrink-0"></div>
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="font-semibold w-4 text-center">≤</span>
+                    <div className="w-14 flex items-center justify-center">
+                      <span className="font-semibold">≤</span>
+                    </div>
                     <input
                       type="text"
                       value={strongThreshold}
@@ -1048,8 +1050,10 @@ const CDICalculator = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-yellow-500 rounded flex-shrink-0"></div>
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="font-semibold w-4 text-center text-xs">{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
-                    <span className="font-semibold">-</span>
+                    <div className="w-14 flex items-center justify-center gap-1">
+                      <span className="font-semibold text-xs">{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
+                      <span className="font-semibold">-</span>
+                    </div>
                     <input
                       type="text"
                       value={moderateThreshold}
@@ -1087,7 +1091,9 @@ const CDICalculator = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 bg-red-500 rounded flex-shrink-0"></div>
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="font-semibold w-4 text-center">≥</span>
+                    <div className="w-14 flex items-center justify-center">
+                      <span className="font-semibold">≥</span>
+                    </div>
                     <span className="w-20 px-2 py-1.5 text-sm text-center font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded">
                       {moderateThreshold ? (parseFloat(moderateThreshold) + 0.01).toFixed(2) : '0.67'}
                     </span>
