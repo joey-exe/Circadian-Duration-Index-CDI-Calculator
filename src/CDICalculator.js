@@ -616,7 +616,7 @@ const CDICalculator = () => {
 
   const setBaseline = () => {
     let activityData = [];
-    
+
     try {
       if (activeTab === 'csv' && csvData) {
         activityData = parseCSV(csvData);
@@ -644,6 +644,12 @@ const CDICalculator = () => {
     } catch (error) {
       alert(`Error processing baseline data: ${error.message}`);
     }
+  };
+
+  const clearBaseline = () => {
+    setBaselineData(null);
+    setBaselineResults(null);
+    alert('Baseline cleared');
   };
 
   return (
@@ -965,6 +971,14 @@ const CDICalculator = () => {
                 >
                   Set Baseline
                 </button>
+                {baselineResults && (
+                  <button
+                    onClick={clearBaseline}
+                    className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm"
+                  >
+                    Clear Baseline
+                  </button>
+                )}
                 <button
                   onClick={loadSampleData}
                   className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
@@ -993,10 +1007,10 @@ const CDICalculator = () => {
 
               <div className="space-y-3 text-sm">
                 {/* Strong threshold */}
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded flex-shrink-0"></div>
-                  <div className="flex items-center gap-1 flex-1">
-                    <span className="font-medium">≤</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-green-500 rounded flex-shrink-0"></div>
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="font-semibold w-4 text-center">≤</span>
                     <input
                       type="text"
                       value={strongThreshold}
@@ -1024,18 +1038,18 @@ const CDICalculator = () => {
                           setStrongThreshold(0.33);
                         }
                       }}
-                      className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      className="w-20 px-2 py-1.5 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium"
                     />
-                    <span className="text-xs text-gray-500 ml-2">Strong consolidation</span>
+                    <span className="text-sm text-gray-700 flex-1">Strong consolidation</span>
                   </div>
                 </div>
 
                 {/* Moderate threshold */}
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-500 rounded flex-shrink-0"></div>
-                  <div className="flex items-center gap-1 flex-1">
-                    <span className="font-medium text-xs">{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
-                    <span className="font-medium">-</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-yellow-500 rounded flex-shrink-0"></div>
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="font-semibold w-4 text-center text-xs">{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
+                    <span className="font-semibold">-</span>
                     <input
                       type="text"
                       value={moderateThreshold}
@@ -1063,18 +1077,21 @@ const CDICalculator = () => {
                           setModerateThreshold(0.66);
                         }
                       }}
-                      className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      className="w-20 px-2 py-1.5 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium"
                     />
-                    <span className="text-xs text-gray-500 ml-2">Moderate consolidation</span>
+                    <span className="text-sm text-gray-700 flex-1">Moderate consolidation</span>
                   </div>
                 </div>
 
                 {/* Weak threshold */}
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-red-500 rounded flex-shrink-0"></div>
-                  <div className="flex items-center gap-1 flex-1">
-                    <span className="font-medium">≥ {moderateThreshold ? (parseFloat(moderateThreshold) + 0.01).toFixed(2) : '0.67'}</span>
-                    <span className="text-xs text-gray-500 ml-2">Weak/absent consolidation</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-red-500 rounded flex-shrink-0"></div>
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="font-semibold w-4 text-center">≥</span>
+                    <span className="w-20 px-2 py-1.5 text-sm text-center font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded">
+                      {moderateThreshold ? (parseFloat(moderateThreshold) + 0.01).toFixed(2) : '0.67'}
+                    </span>
+                    <span className="text-sm text-gray-700 flex-1">Weak/absent consolidation</span>
                   </div>
                 </div>
               </div>
