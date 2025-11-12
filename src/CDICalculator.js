@@ -69,24 +69,22 @@ const CDICalculator = () => {
     const header = lines[0].toLowerCase();
     if (header.includes('day 1') && header.includes('day 2') && header.includes('day 3')) {
       // Multi-day format: each row has 3 values (one per day)
-      // We need to reorganize the data to be in chronological order
+      // Reorganize data in chronological order: day1, day2, day3
       const day1Data = [];
       const day2Data = [];
       const day3Data = [];
-      
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => parseFloat(v.trim()));
-        if (values.length >= 3) {
+        const values = lines[i].split(/[\t,]+/).map(v => parseFloat(v.trim()));
+        if (values.length >= 3 && !isNaN(values[0]) && !isNaN(values[1]) && !isNaN(values[2])) {
           day1Data.push(values[0]);
           day2Data.push(values[1]);
           day3Data.push(values[2]);
         }
       }
-      
-      // Combine all days in sequence: day1, day2, day3
-      // Use the same sample data as manual input for consistency
-      const sampleData = [43,57,42,41,42,66,57,54,1,2,2,1,3,3,3,2,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45];
-      data.push(...sampleData);
+
+      // Combine all days in chronological sequence: day1, then day2, then day3
+      data.push(...day1Data, ...day2Data, ...day3Data);
     } else {
       // Standard format: timestamp, activity
       const timeBinMap = new Map();
