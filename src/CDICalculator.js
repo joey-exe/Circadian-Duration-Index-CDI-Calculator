@@ -274,32 +274,30 @@ const CDICalculator = () => {
     // Calculate 95% threshold
     const target95 = totalActivity * 0.95;
 
-    // Find consistent activity start point (where activity begins)
+    // Find consistent activity start point (where activity begins) - for reference only
     const consistentStartBin = findConsistentActivityStart(normalizedData);
 
     // CDI calculation: Find the minimum duration needed to reach 95% activity
-    // Start from the consistent activity start point and test consecutive periods
+    // Test ALL possible starting points to ensure truly circular calculation
     let minBinsTo95Percent = normalizedData.length;
-    let optimalStartBin = consistentStartBin;
-    
-    // Test starting points around the consistent start point
-    const searchRange = Math.min(6, Math.floor(normalizedData.length / 4)); // Search within 6 bins or 25% of data
-    for (let offset = -searchRange; offset <= searchRange; offset++) {
-      const startBin = (consistentStartBin + offset + normalizedData.length) % normalizedData.length;
+    let optimalStartBin = 0;
+
+    // Test EVERY possible starting point around the full cycle (truly circular)
+    for (let startBin = 0; startBin < normalizedData.length; startBin++) {
       let cumulativeActivity = 0;
       let binsNeeded = 0;
-      
-      // Try consecutive bins starting from this point
+
+      // Try consecutive bins starting from this point, wrapping around
       for (let i = 0; i < normalizedData.length; i++) {
         const binIndex = (startBin + i) % normalizedData.length;
         cumulativeActivity += normalizedData[binIndex];
         binsNeeded++;
-        
+
         if (cumulativeActivity >= target95) {
           break;
         }
       }
-      
+
       // Keep track of the minimum bins needed across all starting points
       if (binsNeeded < minBinsTo95Percent) {
         minBinsTo95Percent = binsNeeded;
