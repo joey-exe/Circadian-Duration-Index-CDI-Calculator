@@ -1042,7 +1042,7 @@ const CDICalculator = () => {
                       }}
                       className="w-20 px-2 py-1.5 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium"
                     />
-                    <span className="text-sm text-gray-700 flex-1">Strong consolidation</span>
+                    <p className="text-sm text-gray-700 flex-1">Strong<br/>consolidation</p>
                   </div>
                 </div>
 
@@ -1083,7 +1083,7 @@ const CDICalculator = () => {
                       }}
                       className="w-20 px-2 py-1.5 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium"
                     />
-                    <span className="text-sm text-gray-700 flex-1">Moderate consolidation</span>
+                    <p className="text-sm text-gray-700 flex-1">Moderate<br/>consolidation</p>
                   </div>
                 </div>
 
@@ -1097,7 +1097,7 @@ const CDICalculator = () => {
                     <span className="w-20 px-2 py-1.5 text-sm text-center font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded">
                       {moderateThreshold ? (parseFloat(moderateThreshold) + 0.01).toFixed(2) : '0.67'}
                     </span>
-                    <span className="text-sm text-gray-700 flex-1">Weak/absent consolidation</span>
+                    <p className="text-sm text-gray-700 flex-1">Weak/absent<br/>consolidation</p>
                   </div>
                 </div>
               </div>
