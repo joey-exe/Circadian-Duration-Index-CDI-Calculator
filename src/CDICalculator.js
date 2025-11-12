@@ -22,6 +22,7 @@ const CDICalculator = () => {
   const [strongThreshold, setStrongThreshold] = useState(0.33);
   const [moderateThreshold, setModerateThreshold] = useState(0.66);
   const [hourShiftPerDay, setHourShiftPerDay] = useState(1);
+  const [thresholdError, setThresholdError] = useState('');
 
   const parseMultiDayData = (data, days, enablePeriodLengthening = false, shiftBinsPerDay = 1) => {
     if (data.length % days !== 0) {
@@ -118,6 +119,68 @@ const CDICalculator = () => {
     return text.split(/[,\s]+/)
       .map(v => parseFloat(v.trim()))
       .filter(v => !isNaN(v));
+  };
+
+  // Validate threshold input
+  const validateThreshold = (value, thresholdName) => {
+    // Allow empty string during editing
+    if (value === '') return true;
+
+    const num = parseFloat(value);
+
+    // Check if it's a valid number
+    if (isNaN(num)) {
+      setThresholdError(`${thresholdName} must be a valid number`);
+      return false;
+    }
+
+    // Check if it's zero
+    if (num === 0) {
+      setThresholdError(`${thresholdName} cannot be 0. CDI values range from >0 to 1. A threshold of 0 would classify all data as weak consolidation.`);
+      return false;
+    }
+
+    // Check if it's negative
+    if (num < 0) {
+      setThresholdError(`${thresholdName} cannot be negative. CDI values are always positive (0-1 range).`);
+      return false;
+    }
+
+    // Check if it's greater than 1
+    if (num > 1) {
+      setThresholdError(`${thresholdName} cannot exceed 1. CDI values range from 0 to 1 by definition.`);
+      return false;
+    }
+
+    // Check decimal places (max 4)
+    const decimalPart = value.split('.')[1];
+    if (decimalPart && decimalPart.length > 4) {
+      setThresholdError(`${thresholdName} cannot have more than 4 decimal places for calculation precision.`);
+      return false;
+    }
+
+    setThresholdError('');
+    return true;
+  };
+
+  const handleStrongThresholdChange = (value) => {
+    if (validateThreshold(value, 'Strong threshold')) {
+      if (value !== '') {
+        const num = parseFloat(value);
+        setStrongThreshold(num);
+        setEnableCustomThresholds(num !== 0.33 || moderateThreshold !== 0.66);
+      }
+    }
+  };
+
+  const handleModerateThresholdChange = (value) => {
+    if (validateThreshold(value, 'Moderate threshold')) {
+      if (value !== '') {
+        const num = parseFloat(value);
+        setModerateThreshold(num);
+        setEnableCustomThresholds(strongThreshold !== 0.33 || num !== 0.66);
+      }
+    }
   };
 
   // ClockLab-inspired circadian period detection using autocorrelation
@@ -688,60 +751,6 @@ const CDICalculator = () => {
                 </div>
               )}
 
-              {/* Custom Threshold Settings */}
-              <div className="mb-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={enableCustomThresholds}
-                    onChange={(e) => setEnableCustomThresholds(e.target.checked)}
-                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Custom CDI thresholds
-                  </span>
-                </label>
-                <p className="text-xs text-gray-500 mt-1">
-                  Customize consolidation classification thresholds
-                </p>
-
-                {enableCustomThresholds && (
-                  <div className="mt-2 space-y-2">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">
-                        Strong consolidation threshold (≤):
-                      </label>
-                      <input
-                        type="number"
-                        value={strongThreshold}
-                        onChange={(e) => setStrongThreshold(parseFloat(e.target.value) || 0.33)}
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">
-                        Moderate consolidation threshold (≤):
-                      </label>
-                      <input
-                        type="number"
-                        value={moderateThreshold}
-                        onChange={(e) => setModerateThreshold(parseFloat(e.target.value) || 0.66)}
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Default: ≤{strongThreshold.toFixed(2)} (Strong), ≤{moderateThreshold.toFixed(2)} (Moderate), &gt;{moderateThreshold.toFixed(2)} (Weak)
-                    </p>
-                  </div>
-                )}
-              </div>
-
               {/* Tab Selection */}
               <div className="flex mb-4 border-b">
                 <button
@@ -854,23 +863,76 @@ const CDICalculator = () => {
                 <Info className="w-5 h-5 text-blue-500" />
                 <h3 className="text-lg font-semibold text-gray-800">CDI Interpretation</h3>
               </div>
-              <div className="space-y-2 text-sm">
+
+              {/* Threshold Error Message */}
+              {thresholdError && (
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-red-800">{thresholdError}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-3">
-                  <span className="font-medium w-24">≤ {enableCustomThresholds ? strongThreshold.toFixed(2) : '0.33'}:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">≤</span>
+                    <input
+                      type="text"
+                      value={strongThreshold}
+                      onChange={(e) => handleStrongThresholdChange(e.target.value)}
+                      onBlur={(e) => {
+                        // Reset to default if invalid on blur
+                        if (e.target.value === '' || parseFloat(e.target.value) <= 0) {
+                          setStrongThreshold(0.33);
+                          setThresholdError('');
+                        }
+                      }}
+                      className="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    />
+                    <span className="font-medium">:</span>
+                  </div>
                   <div className="w-4 h-4 bg-green-500 rounded flex-shrink-0"></div>
                   <span className="text-xs text-gray-500 flex-1">Strong consolidation</span>
                 </div>
+
                 <div className="flex items-center gap-3">
-                  <span className="font-medium w-24">{enableCustomThresholds ? (strongThreshold + 0.01).toFixed(2) : '0.34'}-{enableCustomThresholds ? moderateThreshold.toFixed(2) : '0.66'}:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-xs">{(strongThreshold + 0.01).toFixed(2)}</span>
+                    <span className="font-medium">-</span>
+                    <input
+                      type="text"
+                      value={moderateThreshold}
+                      onChange={(e) => handleModerateThresholdChange(e.target.value)}
+                      onBlur={(e) => {
+                        // Reset to default if invalid on blur
+                        if (e.target.value === '' || parseFloat(e.target.value) <= 0) {
+                          setModerateThreshold(0.66);
+                          setThresholdError('');
+                        }
+                      }}
+                      className="w-16 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    />
+                    <span className="font-medium">:</span>
+                  </div>
                   <div className="w-4 h-4 bg-yellow-500 rounded flex-shrink-0"></div>
                   <span className="text-xs text-gray-500 flex-1">Moderate consolidation</span>
                 </div>
+
                 <div className="flex items-center gap-3">
-                  <span className="font-medium w-24">≥ {enableCustomThresholds ? (moderateThreshold + 0.01).toFixed(2) : '0.67'}:</span>
+                  <span className="font-medium w-24">≥ {(moderateThreshold + 0.01).toFixed(2)}:</span>
                   <div className="w-4 h-4 bg-red-500 rounded flex-shrink-0"></div>
                   <span className="text-xs text-gray-500 flex-1">Weak/absent consolidation</span>
                 </div>
               </div>
+
+              <div className="mt-3 p-2 bg-gray-50 rounded-md">
+                <p className="text-xs text-gray-600">
+                  <strong>Click on threshold values to customize.</strong> Valid range: 0.0001-1.0000 (max 4 decimals)
+                </p>
+              </div>
+
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
                 <h4 className="text-sm font-semibold text-blue-800 mb-2">Enhanced Features:</h4>
                 <ul className="text-xs text-blue-700 space-y-1">
