@@ -1,11 +1,22 @@
 {
   "name": "cdi-calculator",
-  "version": "2.0.0",
-  "description": "Circadian Duration Index (CDI) Calculator for analyzing circadian behavior in mice",
+  "version": "3.0.0",
+  "description": "Circadian Duration Index (CDI) Calculator with custom thresholds, phase shift analysis, and bottom 5% filtering for analyzing circadian behavior in mice",
   "author": "Yeshuwa Taylor",
   "license": "GPL-3.0",
   "contributors": [
     "Dr. Melissa E. Richardson PhD - Scientific Methodology"
+  ],
+  "keywords": [
+    "circadian",
+    "CDI",
+    "phase-shift",
+    "chronobiology",
+    "activity-analysis",
+    "mice",
+    "wheel-running",
+    "free-running-period",
+    "richardson-method"
   ],
   "main": "index.js",
   "scripts": {

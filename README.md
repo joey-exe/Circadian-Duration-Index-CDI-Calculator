@@ -2,7 +2,7 @@
 
 A web-based calculator for the Circadian Duration Index (CDI) method created by Richardson et al. (2023) for analyzing circadian behavior in mice. This tool allows researchers to calculate CDI scores from their own wheel-running or circadian activity data.
 
-**Version 2.0.0** - Now with automatic data detection and enhanced multi-day support
+**Version 3.0.0** - Now with custom thresholds, circadian phase shift, and bottom 5% filtering
 
 ---
 
@@ -31,11 +31,44 @@ Click "Sample" to load example data that yields CDI ≈ 0.667
 
 ### Scientific Background
 
+#### Primary Research Paper
 Based on the research paper:
 - **Title**: "Reversible suppression of circadian-driven locomotor rhythms in mice using a gradual fragmentation of the day-night cycle"
 - **Authors**: Richardson, M.E.S., et al. (2023)
 - **Journal**: Scientific Reports, 13(1), 14423
 - **DOI**: https://doi.org/10.1038/s41598-023-41029-0
+
+#### Circadian Mathematics Framework
+The phase shift implementation is based on established circadian rhythm theory:
+
+**Van der Pol Oscillator Model**:
+- Mathematical model of biological oscillators
+- Describes self-sustained oscillations in circadian systems
+- Foundation for understanding endogenous period generation
+
+**Phase Response Curve (PRC) Theory**:
+- Describes how external stimuli shift circadian phase
+- Quantifies sensitivity to zeitgebers across circadian cycle
+- Fundamental to understanding entrainment mechanisms
+
+**Free-Running Period Analysis**:
+- In constant darkness (DD), organisms express intrinsic period (τ)
+- Phase shift accumulates daily: Δφ = τ - 24h
+- Examples from research:
+  - Wild-type mice: τ ≈ 23.7h (Δφ ≈ -0.3h/day)
+  - Clock mutants: τ ≈ 27h (Δφ ≈ +3h/day)
+  - Per mutants: τ ≈ 21h (Δφ ≈ -3h/day)
+
+**Key References**:
+- Johnson, C.H. (1999). "Forty years of PRCs—what have we learned?" *Chronobiology International*, 16(6), 711-743
+- Pittendrigh, C.S. & Daan, S. (1976). "A functional analysis of circadian pacemakers in nocturnal rodents" *Journal of Comparative Physiology*, 106, 291-331
+- Refinetti, R. (2016). "Circadian Physiology" (3rd ed.). CRC Press
+- Aschoff, J. (1965). "Circadian rhythms in man" *Science*, 148(3676), 1427-1432
+
+**Online Resources**:
+- SCN Network Models: https://www.webofscience.com (search: circadian phase models)
+- Chronobiology simulators: Various research group tools
+- NIST Circadian Time: https://www.nist.gov/pml/time-and-frequency-division
 
 ### CDI Method Definition
 The Circadian Duration Index (CDI) measures **the fraction of a 24-hour day needed to complete 95% of total activity**, expressed as a value between 0-1.
@@ -44,6 +77,8 @@ The Circadian Duration Index (CDI) measures **the fraction of a 24-hour day need
 - **≤ 0.33**: Strong consolidation (normal circadian rhythms)
 - **0.34-0.66**: Moderate consolidation
 - **≥ 0.67**: Weak/Absent consolidation (disrupted/arrhythmic)
+
+**Note**: As of Version 3.0.0, these threshold values can be customized inline within the CDI Interpretation section to match your specific research requirements.
 
 ### Key Features
 
@@ -55,7 +90,16 @@ The Circadian Duration Index (CDI) measures **the fraction of a 24-hour day need
 - **Data Export**: JSON format for research records
 - **Responsive Design**: Works on desktop and tablet
 
-#### New in Version 2.0.0
+#### New in Version 3.0.0
+- **Custom CDI Thresholds**: Inline-editable threshold values with real-time validation
+- **Circadian Phase Shift**: Automatic phase shift calculation using Δφ = τ - 24h formula
+- **Bottom 5% Filtering**: Improved 95% calculation by filtering out bottom 5% of activity data
+- **Integer Hour Displays**: All hour values now display as whole numbers (no decimals)
+- **Fixed CSV Parser**: Now correctly uses uploaded data instead of hardcoded samples
+- **Enhanced UI**: Perfect icon alignment and improved input validation
+- **Custom Circadian Period**: Support for non-24h circadian periods with automatic phase shift
+
+#### Version 2.0.0
 - **Smart Auto-Detection**: Automatically determines optimal time resolution and number of days from data
 - **Enhanced Multi-day Support**: Extended support for up to 14 days of data
 - **Simplified Interface**: Removed manual configuration options in favor of automatic detection
@@ -208,6 +252,105 @@ Period lengthening refers to the phenomenon where circadian rhythms shift later 
 - **Shift Work Analysis**: Study irregular schedules
 - **Circadian Disorder Modeling**: Simulate pathological conditions
 
+#### Circadian Phase Shift Feature (New in v3.0.0)
+The circadian phase shift feature implements the mathematical framework for free-running circadian rhythms based on the Van der Pol oscillator model and Phase Response Curve (PRC) theory.
+
+**Mathematical Foundation:**
+The phase shift per day (Δφ) is calculated using:
+```
+Δφ = τ - 24h
+```
+where τ is the intrinsic circadian period.
+
+**Examples:**
+- **τ = 24h**: Δφ = 0h (no shift, entrained rhythm)
+- **τ = 25h**: Δφ = +1h (shift later by 1h each day)
+- **τ = 23h**: Δφ = -1h (shift earlier by 1h each day)
+- **τ = 24.5h**: Δφ = +0.5h (shift later by 30min each day)
+
+**How It Works:**
+1. **Enable Custom Period**: Check the custom circadian period option
+2. **Set Period**: Enter the intrinsic circadian period (e.g., 25h)
+3. **Auto-Calculate**: Check "Auto-calculate phase shift" to use Δφ = τ - 24h
+4. **Manual Override**: Or manually enter phase shift per day
+5. **Warning System**: Warns if phase shift is enabled without custom period
+
+**Use Cases:**
+- **Free-Running Conditions**: Analyze constant darkness (DD) experiments
+- **Intrinsic Period Analysis**: Study endogenous circadian rhythms
+- **Circadian Phenotyping**: Characterize mutant or disease models
+- **Longitudinal Studies**: Track rhythm progression over multiple days
+
+**Technical Implementation:**
+- Each day's data is shifted by: (day number - 1) × Δφ bins
+- Data wraps circularly to maintain continuity
+- Compatible with multi-day averaging and bottom 5% filtering
+
+#### Custom CDI Thresholds (New in v3.0.0)
+The custom threshold feature allows researchers to define their own CDI interpretation boundaries based on their specific experimental needs.
+
+**Features:**
+- **Inline Editing**: Click on any threshold value to edit directly
+- **Real-time Validation**: Immediate feedback on invalid entries
+- **Constraint Checking**: Ensures thresholds are properly ordered
+- **Flexible Precision**: Support for up to 4 decimal places
+
+**Validation Rules:**
+- Values must be between 0 (exclusive) and 1 (inclusive)
+- Strong threshold must be < Moderate threshold
+- Maximum 4 decimal places allowed
+- Cannot be 0 (CDI values range from >0 to 1)
+- Cannot be negative
+
+**Error Messages:**
+- **"Cannot be 0"**: CDI values range from >0 to 1
+- **"Cannot be negative"**: Thresholds must be positive
+- **"Cannot exceed 1"**: Maximum CDI value is 1
+- **"More than 4 decimal places"**: Precision limit exceeded
+- **"Must be less than moderate"**: Threshold ordering violated
+
+**Use Cases:**
+- **Species-Specific Analysis**: Different organisms may have different baseline rhythms
+- **Experimental Protocols**: Custom lighting schedules may require adjusted thresholds
+- **Disease Models**: Pathological conditions may shift normal ranges
+- **Developmental Studies**: Age-related changes in rhythm consolidation
+
+**Example Custom Thresholds:**
+- **Strict Analysis**: Strong ≤ 0.25, Moderate 0.26-0.50, Weak ≥ 0.51
+- **Lenient Analysis**: Strong ≤ 0.40, Moderate 0.41-0.70, Weak ≥ 0.71
+- **Fine-grained**: Strong ≤ 0.30, Moderate 0.31-0.65, Weak ≥ 0.66
+
+#### Bottom 5% Filtering (New in v3.0.0)
+The bottom 5% filtering feature improves CDI calculation accuracy by excluding low-activity noise from the analysis.
+
+**Algorithm:**
+1. **Sort Activity**: All activity bins sorted in ascending order
+2. **Find 5th Percentile**: Calculate threshold at bottom 5%
+3. **Filter Data**: Remove bins below threshold (set to 0)
+4. **Recalculate Total**: Sum remaining filtered activity
+5. **Calculate CDI**: Find duration to reach 95% of filtered total
+
+**Benefits:**
+- **Noise Reduction**: Eliminates low-level background activity
+- **Improved Accuracy**: Focuses on biologically relevant activity
+- **Consistent Results**: Reduces variability from measurement noise
+- **Better Consolidation Detection**: Highlights primary activity periods
+
+**Example:**
+```
+Original data: [1, 2, 2, 3, 45, 65, 56, 54, 67, 43]
+Sorted: [1, 2, 2, 3, 43, 45, 54, 56, 65, 67]
+5th percentile threshold: 2
+Filtered data: [0, 0, 0, 3, 45, 65, 56, 54, 67, 43]
+95% of filtered total: used for CDI calculation
+```
+
+**Use Cases:**
+- **Noisy Data**: Experiments with low-level sensor noise
+- **Sporadic Activity**: Eliminate random non-circadian movements
+- **High-Resolution Data**: Fine-grained time bins with variable noise
+- **Quality Control**: Standardize analysis across different datasets
+
 ### Data Validation
 
 - Values must be non-negative numbers
@@ -224,16 +367,33 @@ Results can be exported in JSON format containing:
   "cdi": 0.708,
   "consolidation": "Weak/Absent",
   "totalActivity": 769.67,
-  "hoursTo95Percent": 17.0,
+  "hoursTo95Percent": 17,
   "resolution": 30,
   "timeRange95Percent": {
     "startTimeFormatted": "00:00",
     "endTimeFormatted": "17:00",
-    "duration": 17.0
+    "duration": 17
   },
-  "timestamp": "2025-01-15T10:30:00.000Z"
+  "customThresholds": {
+    "strong": 0.33,
+    "moderate": 0.66
+  },
+  "circadianParameters": {
+    "customPeriod": 24,
+    "phaseShiftPerDay": 0,
+    "autoCalculateShift": false
+  },
+  "dataProcessing": {
+    "multiDay": false,
+    "numDays": 1,
+    "bottom5PercentFiltering": true
+  },
+  "timestamp": "2025-01-15T10:30:00.000Z",
+  "version": "3.0.0"
 }
 ```
+
+**Note**: As of v3.0.0, hour values are exported as integers (no decimals) and additional parameters include custom thresholds, circadian phase shift settings, and data processing options.
 
 ### Technical Architecture
 
@@ -259,13 +419,72 @@ Results can be exported in JSON format containing:
 - **Autoprefixer**: Browser compatibility
 
 #### Key Functions
-1. **detectDaysFromData()**: Auto-detection algorithm
-2. **calculateCDI()**: Core CDI algorithm
-3. **parseCSV()**: CSV file parsing
+1. **detectDaysFromData()**: Auto-detection algorithm for time resolution and days
+2. **calculateCDI()**: Core CDI algorithm with bottom 5% filtering
+3. **parseCSV()**: CSV file parsing (fixed to use actual uploaded data)
 4. **parseManualData()**: Manual input processing
-5. **parseMultiDayData()**: Multi-day data processing
-6. **setBaseline()**: Baseline calibration
-7. **exportResults()**: JSON export
+5. **parseMultiDayData()**: Multi-day data processing with phase shift support
+6. **getEffectiveHourShift()**: Calculates Δφ = τ - 24h for phase shift
+7. **validateThreshold()**: Real-time threshold validation (0 < value ≤ 1)
+8. **handleStrongThresholdChange()**: Strong threshold input handler
+9. **handleModerateThresholdChange()**: Moderate threshold input handler
+10. **setBaseline()**: Baseline calibration
+11. **exportResults()**: JSON export with all custom parameters
+
+#### Code Architecture Highlights
+
+**Bottom 5% Filtering Implementation** (CDICalculator.js:274-284):
+```javascript
+// Sort activity values to find the bottom 5% threshold
+const sortedActivities = [...normalizedData].sort((a, b) => a - b);
+const bottom5PercentIndex = Math.floor(sortedActivities.length * 0.05);
+const bottom5Threshold = sortedActivities[bottom5PercentIndex];
+
+// Filter out bins below the bottom 5% threshold
+const filteredData = normalizedData.map(val => val > bottom5Threshold ? val : 0);
+const filteredTotalActivity = filteredData.reduce((sum, val) => sum + val, 0);
+
+// Calculate 95% of filtered activity
+const target95 = filteredTotalActivity * 0.95;
+```
+
+**Phase Shift Calculation** (CDICalculator.js:180-190):
+```javascript
+const getEffectiveHourShift = () => {
+  if (autoCalculateShift && enableCustomPeriod) {
+    // Free-running phase shift: each day shifts by (period - 24) hours
+    return customPeriod - 24;
+  }
+  return hourShiftPerDay;
+};
+```
+
+**Threshold Validation** (CDICalculator.js:118-178):
+```javascript
+const validateThreshold = (value, thresholdName) => {
+  if (value === '') return true; // Allow empty during editing
+  const num = parseFloat(value);
+  if (isNaN(num)) {
+    setThresholdError(`${thresholdName} must be a valid number`);
+    return false;
+  }
+  if (num === 0) {
+    setThresholdError(`${thresholdName} cannot be 0. CDI values range from >0 to 1.`);
+    return false;
+  }
+  // Additional validations...
+  return true;
+};
+```
+
+**Integer Hour Display** (CDICalculator.js:337, 821):
+```javascript
+// In hourlyData array
+hour: Math.round(hour), // Changed from hour.toFixed(1)
+
+// In results display
+{Math.round(results.hoursTo95Percent)}h // Changed from .toFixed(1)
+```
 
 ### Troubleshooting
 
@@ -296,15 +515,86 @@ Results can be exported in JSON format containing:
 - **Cause**: Baseline not set
 - **Solution**: Click "Set Baseline" before calculating
 
+**6. Phase Shift Giving Unexpected Results**
+- **Symptoms**: CDI changes dramatically when enabling phase shift
+- **Cause**: Default hourShiftPerDay was 1h instead of 0h (fixed in v3.0.0)
+- **Solution**: Use auto-calculate feature or manually set to 0h for 24h data
+- **Prevention**: Warning shown if phase shift enabled without custom period
+
+**7. Custom Threshold Validation Errors**
+- **Symptoms**: Cannot enter desired threshold value
+- **Cause**: Value violates validation rules
+- **Solutions**:
+  - Ensure value is between 0 (exclusive) and 1 (inclusive)
+  - Strong threshold must be < moderate threshold
+  - Use maximum 4 decimal places
+  - Cannot use 0 (CDI values range from >0 to 1)
+
+**8. CSV Data Not Being Used**
+- **Symptoms**: Same results regardless of uploaded data
+- **Cause**: Bug in v2.0.0 where hardcoded sample data was used (fixed in v3.0.0)
+- **Solution**: Update to v3.0.0 or later
+- **Verification**: Check that results change with different input data
+
+**9. Backspace Not Working in Threshold Inputs**
+- **Symptoms**: Cannot delete all digits in threshold inputs
+- **Cause**: Input reset to default when empty (fixed in v3.0.0)
+- **Solution**: Update to v3.0.0 which allows complete deletion
+- **Note**: Value resets to default on blur if left empty
+
 #### Error Messages
 - **"Please provide valid activity data"**: Empty or invalid input
 - **"Data length must be divisible by number of days"**: Multi-day mismatch
 - **"Please provide valid baseline data"**: Empty baseline input
 - **"Error processing data"**: General parsing error
+- **"Threshold must be a valid number"**: Non-numeric threshold input
+- **"Threshold cannot be 0"**: CDI values range from >0 to 1
+- **"Threshold cannot be negative"**: Thresholds must be positive
+- **"Threshold cannot exceed 1"**: Maximum CDI value is 1
+- **"Cannot have more than 4 decimal places"**: Precision limit exceeded
+- **"Strong threshold must be less than moderate threshold"**: Threshold ordering violated
+- **"Warning: Phase shift enabled without custom period"**: Configure custom period first
 
 ### Version History
 
-#### Version 2.0.0 (Current)
+#### Version 3.0.0 (Current)
+- **Custom CDI Thresholds**: Inline-editable threshold values with comprehensive validation
+  - Real-time error checking (0 < threshold ≤ 1)
+  - Support for up to 4 decimal places
+  - Constraint checking (strong < moderate)
+  - User-friendly error messages
+- **Circadian Phase Shift**: Automatic phase shift calculation
+  - Implements Δφ = τ - 24h formula
+  - Auto-calculate checkbox for convenience
+  - Manual override option
+  - Warning system for configuration issues
+  - Default phase shift = 0h (prevents unexpected behavior)
+- **Bottom 5% Filtering**: Improved 95% calculation accuracy
+  - Sorts activity bins to find 5th percentile
+  - Filters out low-activity noise
+  - Recalculates on filtered data
+  - Better consolidation detection
+- **Integer Hour Displays**: All hour values now use Math.round()
+  - Removed decimal places for cleaner display
+  - Applies to all hour-based outputs
+  - Improved readability
+- **Fixed CSV Parser**: Critical bug fix
+  - Now correctly uses uploaded data
+  - Previously used hardcoded sample data
+  - Multi-day data properly parsed and concatenated
+  - Supports both tab and comma delimiters
+- **Enhanced UI/UX**:
+  - Perfect icon alignment using flexbox
+  - Consistent gap spacing (gap-2)
+  - Uniform input box widths (w-20)
+  - Fixed backspace behavior (allows complete deletion)
+  - Improved threshold input validation
+- **Custom Circadian Period**: Full support for non-24h periods
+  - Integration with phase shift feature
+  - Seamless multi-day analysis
+  - Compatible with all other features
+
+#### Version 2.0.0
 - Added automatic time resolution detection
 - Extended multi-day support to 14 days
 - Simplified user interface
@@ -326,6 +616,17 @@ Results can be exported in JSON format containing:
 - **CSV Format**: Some complex CSV structures may require manual data entry
 - **Large Datasets**: Very large datasets (>14 days) may need to be split
 - **Browser Compatibility**: Requires modern browsers with ES6+ support
+- **Phase Shift Limits**: Very large phase shifts (>12h/day) may produce unexpected results
+- **Threshold Edge Cases**: Values exactly at threshold boundaries may show inconsistent categorization
+
+### Recent Bug Fixes (v3.0.0)
+
+- ✅ **Fixed**: CSV parser now uses uploaded data instead of hardcoded samples
+- ✅ **Fixed**: Phase shift default changed from 1h to 0h to prevent unexpected behavior
+- ✅ **Fixed**: Backspace now works correctly in threshold inputs
+- ✅ **Fixed**: Icon alignment improved with consistent flexbox spacing
+- ✅ **Fixed**: Hour displays now show integers instead of decimals
+- ✅ **Fixed**: Input boxes now have uniform widths and alignment
 
 ### Future Development
 
@@ -334,26 +635,46 @@ Results can be exported in JSON format containing:
    - T-test for baseline comparison
    - Confidence intervals
    - Effect size calculations
+   - Multi-group comparisons
+   - ANOVA support
 
 2. **Advanced Period Analysis**
-   - Custom shift patterns
-   - Multiple period lengths
-   - Phase response curves
+   - ~~Custom shift patterns~~ ✅ Completed in v3.0.0
+   - Multiple period lengths simultaneously
+   - Phase response curve visualization
+   - Period estimation from data
+   - Autocorrelation analysis
 
 3. **Data Management**
    - Multiple baseline support
-   - Data import/export enhancements
-   - Batch processing
+   - Data import/export enhancements (CSV, Excel, JSON)
+   - Batch processing multiple datasets
+   - Project save/load functionality
+   - Data versioning and history
 
 4. **Visualization Improvements**
-   - Interactive charts
+   - Interactive charts with zoom/pan
    - Custom time ranges
-   - Export visualizations
+   - Export visualizations (PNG, SVG, PDF)
+   - Actogram view for multi-day data
+   - Heat map representations
+   - Side-by-side comparison charts
 
 5. **User Experience**
-   - Tutorial mode
-   - Help documentation
+   - Tutorial mode for new users
+   - Comprehensive help documentation
    - Keyboard shortcuts
+   - Dark mode support
+   - Accessibility improvements
+   - Mobile app version
+
+6. **Advanced CDI Features**
+   - ~~Custom thresholds~~ ✅ Completed in v3.0.0
+   - ~~Bottom 5% filtering~~ ✅ Completed in v3.0.0
+   - Top 10% analysis option
+   - Variable percentile selection (e.g., 90%, 95%, 99%)
+   - Multi-threshold analysis
+   - Threshold recommendations based on data distribution
 
 #### Technical Improvements
 1. **Performance Optimization**
