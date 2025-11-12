@@ -5,6 +5,64 @@ All notable changes to the Circadian Duration Index (CDI) Calculator will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2025-11-12
+
+### Added
+- **Version Badge**: Visible version number displayed in app header
+  - Pill-shaped badge showing current version (v3.1.0)
+  - Positioned in top-right corner of header
+  - Automatically updates from APP_VERSION constant
+  - Indigo color scheme matching app theme
+
+- **Clear Baseline Button**: Ability to unset baseline data
+  - New clearBaseline() function to reset baseline state
+  - Button appears conditionally only when baseline is set
+  - Red color scheme to distinguish from Set Baseline (green)
+  - Alert confirmation when baseline is cleared
+  - Enables easy workflow: set → clear → reset
+
+### Changed
+- **Sample Data Format**: Complete redesign of sample data
+  - Changed from single-line concatenated format to multi-day CSV format
+  - Now displays all 24 rows with "day 1, day 2, day 3" columns
+  - Automatically switches to CSV tab when loading
+  - Matches real user data format exactly
+  - Better demonstrates multi-day functionality
+
+- **CSV Data Display**: Enhanced visibility and usability
+  - Removed 500-character truncation limit
+  - Increased textarea height from h-20 to h-64
+  - Added scrollable interface with overflow-auto
+  - Changed to monospace font for better alignment
+  - Made fully editable for direct data entry
+  - Shows complete dataset without "..." truncation
+
+- **Threshold Input Behavior**: Improved editing experience
+  - Validation now only occurs onBlur (when clicking away)
+  - During typing, accepts any partial values ("0.", "0.2", etc.)
+  - No premature resets while editing
+  - Full backspace support including first decimal digit
+  - Can change 0.33 to 0.25, 0.45, or any valid value
+  - Better user control over input values
+
+- **CDI Interpretation Aesthetics**: Complete visual redesign
+  - Increased icon size from 4×4 to 5×5 pixels
+  - Added fixed width (w-4) to symbols (≤, ≥) for vertical alignment
+  - Increased gap spacing from gap-2 to gap-3
+  - Standardized all input boxes to w-20 width with py-1.5 padding
+  - Styled weak threshold to match input boxes (read-only, gray bg)
+  - Upgraded label text from text-xs to text-sm
+  - Added font-semibold to symbols and font-medium to inputs
+  - Perfect horizontal and vertical alignment across all rows
+
+### Technical
+- Updated package.json version to 3.1.0
+- Updated APP_VERSION constant in CDICalculator.js
+- Enhanced documentation with 3.1.0 features
+- Added migration notes for UI improvements
+
+---
+
 ## [3.0.0] - 2025-11-12
 
 ### Added
@@ -145,20 +203,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Comparison
 
-| Feature | v1.0.0 | v2.0.0 | v3.0.0 |
-|---------|--------|--------|--------|
-| CDI Calculation | ✅ | ✅ | ✅ |
-| Multi-day Support | 3 days | 14 days | 14 days |
-| Auto-detection | ❌ | ✅ | ✅ |
-| Period Lengthening | ❌ | ✅ | ✅ |
-| Custom Thresholds | ❌ | ❌ | ✅ |
-| Phase Shift (Δφ = τ - 24h) | ❌ | ❌ | ✅ |
-| Bottom 5% Filtering | ❌ | ❌ | ✅ |
-| Custom Circadian Period | ❌ | ❌ | ✅ |
-| Integer Hour Display | ❌ | ❌ | ✅ |
-| CSV Parser Fix | ❌ | ⚠️ Bug | ✅ |
-| Threshold Validation | ❌ | ❌ | ✅ |
-| Inline Editing | ❌ | ❌ | ✅ |
+| Feature | v1.0.0 | v2.0.0 | v3.0.0 | v3.1.0 |
+|---------|--------|--------|--------|--------|
+| CDI Calculation | ✅ | ✅ | ✅ | ✅ |
+| Multi-day Support | 3 days | 14 days | 14 days | 14 days |
+| Auto-detection | ❌ | ✅ | ✅ | ✅ |
+| Period Lengthening | ❌ | ✅ | ✅ | ✅ |
+| Custom Thresholds | ❌ | ❌ | ✅ | ✅ |
+| Phase Shift (Δφ = τ - 24h) | ❌ | ❌ | ✅ | ✅ |
+| Bottom 5% Filtering | ❌ | ❌ | ✅ | ✅ |
+| Custom Circadian Period | ❌ | ❌ | ✅ | ✅ |
+| Integer Hour Display | ❌ | ❌ | ✅ | ✅ |
+| CSV Parser Fix | ❌ | ⚠️ Bug | ✅ | ✅ |
+| Threshold Validation | ❌ | ❌ | ✅ | ✅ |
+| Inline Editing | ❌ | ❌ | ✅ | ✅ |
+| Version Badge | ❌ | ❌ | ❌ | ✅ |
+| Clear Baseline | ❌ | ❌ | ❌ | ✅ |
+| Full CSV Display | ❌ | ❌ | ❌ | ✅ |
+| Perfect Backspace | ❌ | ❌ | ❌ | ✅ |
+| Aesthetic CDI UI | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
