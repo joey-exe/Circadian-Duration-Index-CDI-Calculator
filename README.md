@@ -227,7 +227,7 @@ Results can be exported in JSON format containing:
     "endTimeFormatted": "17:00",
     "duration": 17.0
   },
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "timestamp": "2025-01-15T10:30:00.000Z"
 }
 ```
 
@@ -392,7 +392,7 @@ Results can be exported in JSON format containing:
 
 If you encounter any issues or bugs:
 
-**Technical Support**: Joey Taylor - joey.taylor.exe@gmail.com
+**Technical Support**: Yeshuwa Taylor - joey.taylor.exe@gmail.com
 
 Please include:
 - Description of the issue
@@ -405,7 +405,7 @@ Please include:
 
 For questions about the CDI methodology or circadian rhythm research:
 
-**Circadian Rhythm Research Support**: Dr. Melissa Richardson PhD - mrichardson@oakwood.edu
+**Circadian Rhythm Research Support**: Dr. Melissa E. Richardson PhD - mrichardson@oakwood.edu
 
 ---
 

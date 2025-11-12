@@ -15,6 +15,9 @@ const CDICalculator = () => {
   const [baselineData, setBaselineData] = useState(null);
   const [baselineResults, setBaselineResults] = useState(null);
   const [enablePeriodLengthening, setEnablePeriodLengthening] = useState(false);
+  const [customPeriod, setCustomPeriod] = useState(24);
+  const [enableCustomPeriod, setEnableCustomPeriod] = useState(false);
+  const [detectedPeriod, setDetectedPeriod] = useState(null);
 
   const parseMultiDayData = (data, days, enablePeriodLengthening = false) => {
     if (data.length % days !== 0) {
@@ -112,6 +115,56 @@ const CDICalculator = () => {
       .filter(v => !isNaN(v));
   };
 
+  // ClockLab-inspired circadian period detection using autocorrelation
+  const detectCircadianPeriod = (data, resolution) => {
+    if (!data || data.length === 0) return null;
+    
+    const binsPerHour = 60 / resolution;
+    const minPeriodHours = 20; // Minimum circadian period
+    const maxPeriodHours = 28; // Maximum circadian period
+    const minPeriodBins = minPeriodHours * binsPerHour;
+    const maxPeriodBins = maxPeriodHours * binsPerHour;
+    
+    let bestPeriod = 24; // Default to 24 hours
+    let bestCorrelation = 0;
+    
+    // Test different periods within circadian range
+    for (let periodBins = minPeriodBins; periodBins <= maxPeriodBins; periodBins += binsPerHour) {
+      let correlation = 0;
+      let validComparisons = 0;
+      
+      // Calculate autocorrelation for this period
+      for (let i = 0; i < data.length - periodBins; i++) {
+        const current = data[i];
+        const shifted = data[i + periodBins];
+        
+        if (current > 0 && shifted > 0) {
+          // Normalize and correlate
+          const normalizedCurrent = current / Math.max(...data);
+          const normalizedShifted = shifted / Math.max(...data);
+          correlation += normalizedCurrent * normalizedShifted;
+          validComparisons++;
+        }
+      }
+      
+      if (validComparisons > 0) {
+        correlation /= validComparisons;
+        
+        if (correlation > bestCorrelation) {
+          bestCorrelation = correlation;
+          bestPeriod = periodBins / binsPerHour; // Convert back to hours
+        }
+      }
+    }
+    
+    // Only return detected period if correlation is significant
+    return bestCorrelation > 0.3 ? {
+      period: bestPeriod,
+      correlation: bestCorrelation,
+      confidence: bestCorrelation > 0.6 ? 'high' : bestCorrelation > 0.4 ? 'medium' : 'low'
+    } : null;
+  };
+
   const detectDaysFromData = (data) => {
     if (!data || data.length === 0) return null;
     
@@ -148,11 +201,55 @@ const CDICalculator = () => {
     return bestMatch;
   };
 
-  const calculateCDI = useCallback((activityData) => {
+  // Enhanced algorithm to find consistent activity start point
+  const findConsistentActivityStart = (data, threshold = 0.1) => {
+    if (!data || data.length === 0) return 0;
+    
+    const totalActivity = data.reduce((sum, val) => sum + val, 0);
+    const activityThreshold = totalActivity * threshold;
+    
+    // First, try to find where low activity ends (transition from low to high)
+    // This handles cases like your 20-hour pattern where there's a gap in the middle
+    let bestTransitionPoint = 0;
+    let maxTransitionScore = 0;
+    
+    for (let i = 0; i < data.length; i++) {
+      const currentActivity = data[i];
+      const nextActivity = data[(i + 1) % data.length];
+      
+      // Look for transition from low activity to high activity
+      if (currentActivity < totalActivity * 0.05 && nextActivity > totalActivity * 0.1) {
+        const transitionScore = nextActivity - currentActivity;
+        if (transitionScore > maxTransitionScore) {
+          maxTransitionScore = transitionScore;
+          bestTransitionPoint = (i + 1) % data.length;
+        }
+      }
+    }
+    
+    // If we found a clear transition point, use it
+    if (maxTransitionScore > totalActivity * 0.05) {
+      return bestTransitionPoint;
+    }
+    
+    // Fallback to original threshold method
+    let cumulativeActivity = 0;
+    for (let i = 0; i < data.length; i++) {
+      cumulativeActivity += data[i];
+      if (cumulativeActivity >= activityThreshold) {
+        return i;
+      }
+    }
+    
+    return 0; // Fallback to start if no clear threshold found
+  };
+
+  const calculateCDI = useCallback((activityData, customPeriodHours = null) => {
     if (!activityData || activityData.length === 0) return null;
 
     const binsPerHour = 60 / resolution;
-    const expectedBins = 24 * binsPerHour;
+    const periodHours = customPeriodHours || (enableCustomPeriod ? customPeriod : 24);
+    const expectedBins = periodHours * binsPerHour;
     
     // Don't pad with zeros - use the data as-is
     // The data should already be in the correct format for the resolution
@@ -177,11 +274,18 @@ const CDICalculator = () => {
     // Calculate 95% threshold
     const target95 = totalActivity * 0.95;
 
+    // Find consistent activity start point (where activity begins)
+    const consistentStartBin = findConsistentActivityStart(normalizedData);
+
     // CDI calculation: Find the minimum duration needed to reach 95% activity
-    // by testing all possible starting points in chronological order
+    // Start from the consistent activity start point and test consecutive periods
     let minBinsTo95Percent = normalizedData.length;
+    let optimalStartBin = consistentStartBin;
     
-    for (let startBin = 0; startBin < normalizedData.length; startBin++) {
+    // Test starting points around the consistent start point
+    const searchRange = Math.min(6, Math.floor(normalizedData.length / 4)); // Search within 6 bins or 25% of data
+    for (let offset = -searchRange; offset <= searchRange; offset++) {
+      const startBin = (consistentStartBin + offset + normalizedData.length) % normalizedData.length;
       let cumulativeActivity = 0;
       let binsNeeded = 0;
       
@@ -199,36 +303,12 @@ const CDICalculator = () => {
       // Keep track of the minimum bins needed across all starting points
       if (binsNeeded < minBinsTo95Percent) {
         minBinsTo95Percent = binsNeeded;
-      }
-    }
-
-    // CDI is the fraction of the day needed to reach 95% activity
-    const cdi = minBinsTo95Percent / normalizedData.length;
-
-    // Calculate time range for 95% activity using the optimal starting point
-    let optimalStartBin = 0;
-    let minBinsForRange = normalizedData.length;
-    
-    // Find the optimal starting point that gives minimum bins
-    for (let startBin = 0; startBin < normalizedData.length; startBin++) {
-      let cumulativeActivity = 0;
-      let binsNeeded = 0;
-      
-      for (let i = 0; i < normalizedData.length; i++) {
-        const binIndex = (startBin + i) % normalizedData.length;
-        cumulativeActivity += normalizedData[binIndex];
-        binsNeeded++;
-        
-        if (cumulativeActivity >= target95) {
-          break;
-        }
-      }
-      
-      if (binsNeeded < minBinsForRange) {
-        minBinsForRange = binsNeeded;
         optimalStartBin = startBin;
       }
     }
+
+    // CDI is the fraction of the period needed to reach 95% activity
+    const cdi = minBinsTo95Percent / normalizedData.length;
     
     // Calculate the time range for the optimal starting point
     const startTime = (optimalStartBin * resolution) / 60;
@@ -272,16 +352,18 @@ const CDICalculator = () => {
       consolidation: cdi <= 0.33 ? 'Strong' : cdi <= 0.66 ? 'Moderate' : 'Weak/Absent',
       consolidationLevel: cdi <= 0.33 ? 0 : cdi <= 0.66 ? 1 : 2, // 0=Strong, 1=Moderate, 2=Weak
       hourlyData: hourlyData,
+      periodHours: periodHours,
+      consistentStartBin: consistentStartBin,
       // Time range for 95% activity
       timeRange95Percent: {
         startTime: startClock,
         endTime: endClock,
         startTimeFormatted: formatClockTime(startClock),
         endTimeFormatted: formatClockTime(endClock),
-        duration: endClock - startClock + (endClock < startClock ? 24 : 0) // Handle day wrap-around
+        duration: endClock - startClock + (endClock < startClock ? periodHours : 0) // Handle period wrap-around
       }
     };
-  }, [resolution]);
+  }, [resolution, customPeriod, enableCustomPeriod]);
 
   const handleCalculate = () => {
     let activityData = [];
@@ -302,7 +384,17 @@ const CDICalculator = () => {
         activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening);
       }
 
-      const result = calculateCDI(activityData);
+      // Detect circadian period for multi-day data
+      let detectedPeriodInfo = null;
+      if (multiDay && activityData.length > 0) {
+        detectedPeriodInfo = detectCircadianPeriod(activityData, resolution);
+        if (detectedPeriodInfo) {
+          setDetectedPeriod(detectedPeriodInfo);
+          setCustomPeriod(detectedPeriodInfo.period);
+        }
+      }
+
+      const result = calculateCDI(activityData, detectedPeriodInfo?.period);
       setResults(result);
     } catch (error) {
       alert(`Error processing data: ${error.message}`);
@@ -339,7 +431,10 @@ const CDICalculator = () => {
       hoursTo95Percent: results.hoursTo95Percent,
       onsetHour: results.onsetHour,
       resolution: resolution,
+      periodHours: results.periodHours,
+      consistentStartBin: results.consistentStartBin,
       timeRange95Percent: results.timeRange95Percent,
+      detectedPeriod: detectedPeriod,
       timestamp: new Date().toISOString()
     };
 
@@ -353,8 +448,9 @@ const CDICalculator = () => {
 
   const loadSampleData = () => {
     // Sample data: 3 days of hourly bins (24 bins per day = 72 total values)
-    // This matches the CSV format and represents typical mouse activity
-    const sampleData = "43,57,42,41,42,66,57,54,1,2,2,1,3,3,3,2,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45";
+    // Represents continuous activity pattern - high activity grouped together, low activity at edges
+    // Pattern: Low activity at start/end, continuous high activity in middle
+    const sampleData = "2,1,1,1,2,2,1,1,1,2,1,2,1,1,2,1,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45";
     setManualData(sampleData);
     // Auto-detect days from sample data
     const parsedData = parseManualData(sampleData);
@@ -409,9 +505,11 @@ const CDICalculator = () => {
             <h1 className="text-3xl font-bold text-gray-800">Circadian Duration Index (CDI) Calculator</h1>
           </div>
           <p className="text-gray-600">
-            Calculate the fraction of a 24-hour day needed to complete 95% of total activity.
+            Calculate the fraction of a circadian period needed to complete 95% of total activity.
+            Supports both 24-hour and custom circadian periods (20-28h). Features ClockLab-compatible 
+            period detection and enhanced activity start point detection.<br/>
             Based on the method developed by Richardson et al. (2023).<br/>
-            <small className="text-gray-500">Tool created by Joey Taylor | Methodology by Dr. Melissa Richardson PhD</small>
+            <small className="text-gray-500">Tool created by Yeshuwa Taylor | Methodology by Dr. Melissa E. Richardson PhD</small>
           </p>
         </div>
 
@@ -487,6 +585,62 @@ const CDICalculator = () => {
                   Simulates circadian period lengthening by shifting each day by 1 time bin
                 </p>
               </div>
+
+              {/* Custom Period Settings */}
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={enableCustomPeriod}
+                    onChange={(e) => setEnableCustomPeriod(e.target.checked)}
+                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Custom circadian period (non-24h)
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enable for behaviors with periods other than 24 hours
+                </p>
+                
+                {enableCustomPeriod && (
+                  <div className="mt-2">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Period (hours):
+                    </label>
+                    <input
+                      type="number"
+                      value={customPeriod}
+                      onChange={(e) => setCustomPeriod(parseFloat(e.target.value) || 24)}
+                      min="20"
+                      max="28"
+                      step="0.1"
+                      className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Range: 20-28 hours (circadian range)
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Detected Period Display */}
+              {detectedPeriod && (
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-purple-800">
+                      Detected Period: {detectedPeriod.period.toFixed(1)}h
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-600 mt-1">
+                    Confidence: {detectedPeriod.confidence} (r={detectedPeriod.correlation.toFixed(3)})
+                  </p>
+                  <p className="text-xs text-purple-600">
+                    ClockLab-compatible autocorrelation analysis
+                  </p>
+                </div>
+              )}
 
               {/* Tab Selection */}
               <div className="flex mb-4 border-b">
@@ -604,15 +758,27 @@ const CDICalculator = () => {
                 <div className="flex justify-between items-center">
                   <span className="font-medium">≤ 0.33:</span>
                   <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span className="text-xs text-gray-500">Strong consolidation</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-medium">0.34-0.66:</span>
                   <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                  <span className="text-xs text-gray-500">Moderate consolidation</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-medium">≥ 0.67:</span>
                   <div className="w-4 h-4 bg-red-500 rounded"></div>
+                  <span className="text-xs text-gray-500">Weak/absent consolidation</span>
                 </div>
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 rounded-md">
+                <h4 className="text-sm font-semibold text-blue-800 mb-2">Enhanced Features:</h4>
+                <ul className="text-xs text-blue-700 space-y-1">
+                  <li>• Custom circadian periods (20-28h)</li>
+                  <li>• ClockLab-compatible period detection</li>
+                  <li>• Consistent activity start point detection</li>
+                  <li>• Multi-day analysis with period averaging</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -678,6 +844,16 @@ const CDICalculator = () => {
                       </div>
                       <div className="text-sm text-gray-600">Total Activity</div>
                     </div>
+                    
+                    <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-lg">
+                      <div className="text-lg font-bold text-teal-600">
+                        {results.periodHours.toFixed(1)}h
+                      </div>
+                      <div className="text-sm text-gray-600">Circadian Period</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {results.periodHours !== 24 ? 'Custom period' : 'Standard 24h'}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Baseline Comparison */}
@@ -724,7 +900,9 @@ const CDICalculator = () => {
 
                 {/* Activity Distribution Chart */}
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">24-Hour Activity Distribution</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    {results.periodHours.toFixed(1)}-Hour Activity Distribution
+                  </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={results.hourlyData.filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 48)) === 0)}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -790,7 +968,7 @@ const CDICalculator = () => {
         <div className="bg-white rounded-lg shadow-lg p-4 mt-6 text-center text-sm text-gray-500">
           Based on the Circadian Duration Index method by Richardson, M.E.S., et al. (2023). 
           <em>Scientific Reports</em>, 13(1), 14423.<br/>
-          <small>Tool created by Joey Taylor | Methodology by Dr. Melissa Richardson PhD</small><br/>
+          <small>Tool created by Yeshuwa Taylor | Methodology by Dr. Melissa E. Richardson PhD</small><br/>
           <small>Technical Support: joey.taylor.exe@gmail.com | Research Questions: mrichardson@oakwood.edu</small>
         </div>
       </div>

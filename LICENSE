@@ -1,0 +1,42 @@
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2025 Yeshuwa Taylor
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License along
+ with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Scientific Methodology Attribution:
+This tool was created by Yeshuwa Taylor and implements the Circadian Duration Index (CDI) 
+method developed by Dr. Melissa E. Richardson PhD. For research questions regarding the 
+methodology, please contact: mrichardson@oakwood.edu
+
+---
+
+ADDITIONAL INFORMATION:
+
+This program is licensed under GPL v3, which provides:
+
+1. PATENT PROTECTION (Section 11):
+   Each contributor grants you a non-exclusive, worldwide, royalty-free patent license 
+   under the contributor's essential patent claims, to make, use, sell, offer for sale, 
+   import and otherwise run, modify and propagate the contents of its contributor version.
+
+2. COPYLEFT PROTECTION:
+   If you modify or distribute this software, you must also license your derivative works 
+   under GPL v3, ensuring they remain open source.
+
+For the complete GNU General Public License v3 text, visit:
+https://www.gnu.org/licenses/gpl-3.0.html
