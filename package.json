@@ -1,6 +1,6 @@
 {
   "name": "cdi-calculator",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Circadian Duration Index (CDI) Calculator with custom thresholds, phase shift analysis, and bottom 5% filtering for analyzing circadian behavior in mice",
   "author": "Yeshuwa Taylor",
   "license": "GPL-3.0",
