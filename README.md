@@ -2,7 +2,7 @@
 
 A web-based calculator for the Circadian Duration Index (CDI) method created by Richardson et al. (2023) for analyzing circadian behavior in mice. This tool allows researchers to calculate CDI scores from their own wheel-running or circadian activity data.
 
-**Version 3.0.0** - Now with custom thresholds, circadian phase shift, and bottom 5% filtering
+**Version 3.1.0** - Now with custom thresholds, circadian phase shift, bottom 5% filtering, and enhanced UI
 
 ---
 
@@ -89,6 +89,14 @@ The Circadian Duration Index (CDI) measures **the fraction of a 24-hour day need
 - **Interactive Visualizations**: Activity distribution and cumulative activity charts
 - **Data Export**: JSON format for research records
 - **Responsive Design**: Works on desktop and tablet
+
+#### New in Version 3.1.0
+- **Version Badge**: Visible version number in app header for easy identification
+- **Enhanced Sample Data**: Multi-day CSV format matching real user data (24 rows, 3 days)
+- **Full CSV Display**: Complete data view in scrollable textarea (no truncation)
+- **Perfect Backspace Support**: Full editing capability for threshold values (can delete first digit)
+- **Aesthetic CDI Interpretation**: Perfectly aligned icons, inputs, and labels with consistent spacing
+- **Clear Baseline Button**: Easy way to unset baseline data (appears only when baseline is set)
 
 #### New in Version 3.0.0
 - **Custom CDI Thresholds**: Inline-editable threshold values with real-time validation
@@ -389,7 +397,7 @@ Results can be exported in JSON format containing:
     "bottom5PercentFiltering": true
   },
   "timestamp": "2025-01-15T10:30:00.000Z",
-  "version": "3.0.0"
+  "version": "3.1.0"
 }
 ```
 
@@ -557,7 +565,45 @@ hour: Math.round(hour), // Changed from hour.toFixed(1)
 
 ### Version History
 
-#### Version 3.0.0 (Current)
+#### Version 3.1.0 (Current)
+- **Version Badge Display**: Added visible version number (v3.1.0) in app header
+  - Appears as pill-shaped badge in top-right corner
+  - Easy verification of current version
+  - Updates automatically from APP_VERSION constant
+- **Enhanced Sample Data**: Fixed sample data format
+  - Changed from concatenated single-line format to multi-day CSV format
+  - Now shows all 24 rows with "day 1, day 2, day 3" columns
+  - Automatically switches to CSV tab when loading sample
+  - Matches real user data format exactly
+- **Full CSV Display**: Improved CSV data visibility
+  - Removed 500-character truncation limit
+  - Increased textarea height from h-20 to h-64 for better viewing
+  - Added scrollable interface with overflow-auto
+  - Monospace font for better data alignment
+  - Made editable so users can paste or modify data directly
+- **Perfect Backspace Support**: Enhanced threshold input editing
+  - Users can now backspace and delete first decimal digit completely
+  - Validation only happens onBlur (when clicking away)
+  - During typing, accepts any partial value like "0.", "0.2", etc.
+  - No premature resets during editing
+  - Allows full control to change 0.33 to 0.25, 0.45, etc.
+- **Aesthetic CDI Interpretation**: Complete visual redesign
+  - Increased icon size from 4×4 to 5×5 for better visibility
+  - Fixed width (w-4) for symbols (≤, ≥) ensuring perfect vertical alignment
+  - Increased gap spacing from gap-2 to gap-3 for breathing room
+  - Standardized all input boxes to w-20 width with py-1.5 padding
+  - Made weak threshold value styled like input box (read-only, gray bg)
+  - Upgraded text size from text-xs to text-sm for readability
+  - Added font-semibold to symbols, font-medium to inputs
+  - Perfect horizontal and vertical alignment across all three rows
+- **Clear Baseline Feature**: Added baseline management
+  - New clearBaseline() function to unset baseline data
+  - "Clear Baseline" button appears conditionally when baseline is set
+  - Red color scheme distinguishes from "Set Baseline" (green)
+  - Provides user feedback via alert message
+  - Allows easy workflow: set → clear → reset new baseline
+
+#### Version 3.0.0
 - **Custom CDI Thresholds**: Inline-editable threshold values with comprehensive validation
   - Real-time error checking (0 < threshold ≤ 1)
   - Support for up to 4 decimal places
