@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Upload, Download, Calculator, Info, AlertCircle } from 'lucide-react';
 
 const CDICalculator = () => {
-  const APP_VERSION = '3.1.0';
+  const APP_VERSION = '3.1.1';
 
   const [data, setData] = useState([]);
   const [results, setResults] = useState(null);

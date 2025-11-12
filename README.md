@@ -2,7 +2,7 @@
 
 A web-based calculator for the Circadian Duration Index (CDI) method created by Richardson et al. (2023) for analyzing circadian behavior in mice. This tool allows researchers to calculate CDI scores from their own wheel-running or circadian activity data.
 
-**Version 3.1.0** - Now with custom thresholds, circadian phase shift, bottom 5% filtering, and enhanced UI
+**Version 3.1.1** - Now with custom thresholds, circadian phase shift, bottom 5% filtering, and enhanced UI
 
 ---
 
@@ -89,6 +89,13 @@ The Circadian Duration Index (CDI) measures **the fraction of a 24-hour day need
 - **Interactive Visualizations**: Activity distribution and cumulative activity charts
 - **Data Export**: JSON format for research records
 - **Responsive Design**: Works on desktop and tablet
+
+#### New in Version 3.1.1
+- **Two-Line Threshold Labels**: CDI threshold labels now display on two lines for better readability
+  - "Strong consolidation" → displays as "Strong" / "consolidation"
+  - "Moderate consolidation" → displays as "Moderate" / "consolidation"
+  - "Weak/absent consolidation" → displays as "Weak/absent" / "consolidation"
+  - Improved visual organization in CDI Interpretation section
 
 #### New in Version 3.1.0
 - **Version Badge**: Visible version number in app header for easy identification
@@ -397,7 +404,7 @@ Results can be exported in JSON format containing:
     "bottom5PercentFiltering": true
   },
   "timestamp": "2025-01-15T10:30:00.000Z",
-  "version": "3.1.0"
+  "version": "3.1.1"
 }
 ```
 
@@ -565,7 +572,16 @@ hour: Math.round(hour), // Changed from hour.toFixed(1)
 
 ### Version History
 
-#### Version 3.1.0 (Current)
+#### Version 3.1.1 (Current)
+- **Two-Line Threshold Labels**: Improved readability in CDI Interpretation section
+  - Changed threshold labels to display on two lines using `<br/>` tags
+  - "Strong consolidation" → "Strong" / "consolidation"
+  - "Moderate consolidation" → "Moderate" / "consolidation"
+  - "Weak/absent consolidation" → "Weak/absent" / "consolidation"
+  - Changed from `<span>` to `<p>` elements for better semantic structure
+  - Improved visual organization and reduced horizontal crowding
+
+#### Version 3.1.0
 - **Version Badge Display**: Added visible version number (v3.1.0) in app header
   - Appears as pill-shaped badge in top-right corner
   - Easy verification of current version

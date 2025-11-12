@@ -5,6 +5,25 @@ All notable changes to the Circadian Duration Index (CDI) Calculator will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2025-11-12
+
+### Changed
+- **CDI Threshold Labels**: Improved readability with two-line display format
+  - Changed all threshold labels from single-line to two-line format using `<br/>` tags
+  - "Strong consolidation" → "Strong" / "consolidation" (two lines)
+  - "Moderate consolidation" → "Moderate" / "consolidation" (two lines)
+  - "Weak/absent consolidation" → "Weak/absent" / "consolidation" (two lines)
+  - Changed from `<span>` elements to `<p>` elements for better semantic HTML
+  - Reduced horizontal crowding in CDI Interpretation section
+  - Improved visual organization and scannability
+
+### Technical
+- Updated package.json version to 3.1.1
+- Updated APP_VERSION constant in CDICalculator.js to 3.1.1
+- Modified CDICalculator.js lines 1045, 1086, 1100 to use `<p>` with `<br/>` tags
+
+---
+
 ## [3.1.0] - 2025-11-12
 
 ### Added
