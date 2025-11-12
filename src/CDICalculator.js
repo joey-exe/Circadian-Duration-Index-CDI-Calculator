@@ -562,23 +562,55 @@ const CDICalculator = () => {
   };
 
   const loadSampleData = () => {
-    // Sample data: 3 days of hourly bins (24 bins per day = 72 total values)
-    // Represents continuous activity pattern - high activity grouped together, low activity at edges
-    // Pattern: Low activity at start/end, continuous high activity in middle
-    const sampleData = "2,1,1,1,2,2,1,1,1,2,1,2,1,1,2,1,64,62,46,56,69,55,61,52,48,47,63,50,42,48,40,52,1,1,1,2,2,1,1,2,52,40,47,45,56,54,43,43,61,40,67,50,53,43,59,67,2,1,3,3,2,3,2,3,45,66,47,48,57,50,63,45";
-    setManualData(sampleData);
-    // Auto-detect days from sample data
-    const parsedData = parseManualData(sampleData);
-    const detection = detectDaysFromData(parsedData);
-    if (detection) {
-      setAutoDetectedDays(detection.days);
-      setNumDays(detection.days);
-      setMultiDay(detection.days > 1);
-      setResolution(detection.resolution);
-    } else {
-      // Fallback: Unable to auto-detect, assume single day
-      setMultiDay(false);
-      setNumDays(1);
+    // Sample data: 3 days of hourly bins (24 bins per day) in CSV format
+    // Represents continuous activity pattern with strong consolidation (CDI ≈ 0.667)
+    // Pattern: Low activity during rest phase, high activity during active phase
+    const sampleData = `day 1\tday 2\tday 3
+45\t35\t24
+65\t65\t24
+56\t35\t35
+56\t24\t14
+54\t54\t35
+32\t24\t24
+32\t15\t35
+56\t45\t45
+43\t43\t43
+67\t67\t35
+54\t35\t35
+33\t33\t35
+45\t35\t35
+33\t6\t6
+23\t6\t6
+3\t3\t3
+4\t4\t4
+5\t5\t5
+1\t1\t1
+2\t2\t2
+3\t3\t3
+67\t56\t56
+78\t78\t78
+65\t65\t65`;
+
+    // Switch to CSV tab and load the data
+    setActiveTab('csv');
+    setCsvData(sampleData);
+
+    // Auto-process the CSV data
+    try {
+      const parsedData = parseCSV(sampleData);
+      const detection = detectDaysFromData(parsedData);
+      if (detection) {
+        setAutoDetectedDays(detection.days);
+        setNumDays(detection.days);
+        setMultiDay(detection.days > 1);
+        setResolution(detection.resolution);
+      } else {
+        // Fallback: Unable to auto-detect, assume single day
+        setMultiDay(false);
+        setNumDays(1);
+      }
+    } catch (error) {
+      console.error('Error loading sample data:', error);
     }
   };
 
