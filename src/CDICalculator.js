@@ -22,6 +22,7 @@ const CDICalculator = () => {
   const [strongThreshold, setStrongThreshold] = useState(0.33);
   const [moderateThreshold, setModerateThreshold] = useState(0.66);
   const [hourShiftPerDay, setHourShiftPerDay] = useState(1);
+  const [autoCalculateShift, setAutoCalculateShift] = useState(false);
   const [thresholdError, setThresholdError] = useState('');
 
   const parseMultiDayData = (data, days, enablePeriodLengthening = false, shiftBinsPerDay = 1) => {
@@ -181,6 +182,16 @@ const CDICalculator = () => {
         setEnableCustomThresholds(strongThreshold !== 0.33 || num !== 0.66);
       }
     }
+  };
+
+  // Calculate effective hour shift based on circadian period (free-running phase shift)
+  // Mathematical principle: Δφ per day = τ - 24h (where τ is intrinsic period)
+  const getEffectiveHourShift = () => {
+    if (autoCalculateShift && enableCustomPeriod) {
+      // Free-running phase shift: each day shifts by (period - 24) hours
+      return customPeriod - 24;
+    }
+    return hourShiftPerDay;
   };
 
   // ClockLab-inspired circadian period detection using autocorrelation
@@ -466,7 +477,8 @@ const CDICalculator = () => {
       if (multiDay) {
         // Calculate bins per hour for shift conversion
         const binsPerHour = 60 / resolution;
-        const shiftBins = Math.round(hourShiftPerDay * binsPerHour);
+        const effectiveShift = getEffectiveHourShift();
+        const shiftBins = Math.round(effectiveShift * binsPerHour);
         activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening, shiftBins);
       }
 
@@ -571,7 +583,8 @@ const CDICalculator = () => {
       if (multiDay) {
         // Calculate bins per hour for shift conversion
         const binsPerHour = 60 / resolution;
-        const shiftBins = Math.round(hourShiftPerDay * binsPerHour);
+        const effectiveShift = getEffectiveHourShift();
+        const shiftBins = Math.round(effectiveShift * binsPerHour);
         activityData = parseMultiDayData(activityData, numDays, enablePeriodLengthening, shiftBins);
       }
 
@@ -667,30 +680,63 @@ const CDICalculator = () => {
                     disabled={!multiDay}
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Enable hour shift per day
+                    Enable phase shift per day
                   </span>
                 </label>
                 <p className="text-xs text-gray-500 mt-1">
-                  Simulates circadian period changes by shifting each day
+                  Aligns data for free-running circadian rhythms (non-24h periods)
                 </p>
 
                 {enablePeriodLengthening && multiDay && (
-                  <div className="mt-2">
-                    <label className="block text-xs text-gray-600 mb-1">
-                      Hour shift per day:
+                  <div className="mt-2 space-y-2">
+                    {/* Auto-calculate from period */}
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={autoCalculateShift}
+                        onChange={(e) => setAutoCalculateShift(e.target.checked)}
+                        className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        disabled={!enableCustomPeriod}
+                      />
+                      <span className="text-xs font-medium text-gray-700">
+                        Auto-calculate from period (Δφ = τ - 24h)
+                      </span>
                     </label>
-                    <input
-                      type="number"
-                      value={hourShiftPerDay}
-                      onChange={(e) => setHourShiftPerDay(parseFloat(e.target.value) || 1)}
-                      min="0"
-                      max="24"
-                      step="0.5"
-                      className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Each day will be shifted by {hourShiftPerDay} hour(s)
-                    </p>
+
+                    {!autoCalculateShift && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">
+                          Phase shift per day (hours):
+                        </label>
+                        <input
+                          type="number"
+                          value={hourShiftPerDay}
+                          onChange={(e) => setHourShiftPerDay(parseFloat(e.target.value) || 1)}
+                          min="-12"
+                          max="12"
+                          step="0.1"
+                          className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Manual override: {hourShiftPerDay > 0 ? '+' : ''}{hourShiftPerDay}h shift/day
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Display effective shift */}
+                    <div className="p-2 bg-purple-50 border border-purple-200 rounded-md">
+                      <p className="text-xs text-purple-800">
+                        <strong>Effective shift: {getEffectiveHourShift() > 0 ? '+' : ''}{getEffectiveHourShift().toFixed(2)}h/day</strong>
+                        {autoCalculateShift && enableCustomPeriod && (
+                          <span className="block mt-1 text-purple-600">
+                            Calculated from period: {customPeriod}h - 24h = {(customPeriod - 24).toFixed(2)}h
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        Based on free-running phase shift model: Δφ = τ - 24h
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
