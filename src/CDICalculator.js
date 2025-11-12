@@ -939,11 +939,12 @@ const CDICalculator = () => {
                   
                   {csvData && (
                     <div className="mt-3">
-                      <p className="text-sm text-green-600 mb-2">File uploaded successfully</p>
+                      <p className="text-sm text-green-600 mb-2">CSV Data Loaded</p>
                       <textarea
-                        value={csvData.slice(0, 500) + (csvData.length > 500 ? '...' : '')}
-                        readOnly
-                        className="w-full h-20 p-2 text-xs border border-gray-300 rounded-md bg-gray-50"
+                        value={csvData}
+                        onChange={(e) => setCsvData(e.target.value)}
+                        className="w-full h-64 p-2 text-xs font-mono border border-gray-300 rounded-md bg-gray-50 overflow-auto"
+                        placeholder="Paste CSV data here..."
                       />
                     </div>
                   )}
@@ -1001,19 +1002,26 @@ const CDICalculator = () => {
                       value={strongThreshold}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow empty string for backspacing
+                        // Allow any input during typing (including partial values like "0." or "0.2")
+                        setStrongThreshold(value);
+                        setThresholdError('');
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value;
+                        // Reset to default if empty
                         if (value === '') {
-                          setStrongThreshold('');
+                          setStrongThreshold(0.33);
                           setThresholdError('');
                           return;
                         }
-                        handleStrongThresholdChange(value);
-                      }}
-                      onBlur={(e) => {
-                        // Reset to default only if empty
-                        if (e.target.value === '') {
+                        // Validate and format on blur
+                        if (validateThreshold(value, 'Strong threshold')) {
+                          const num = parseFloat(value);
+                          setStrongThreshold(num);
+                          setEnableCustomThresholds(num !== 0.33 || moderateThreshold !== 0.66);
+                        } else {
+                          // If invalid, reset to previous valid value or default
                           setStrongThreshold(0.33);
-                          setThresholdError('');
                         }
                       }}
                       className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
@@ -1033,19 +1041,26 @@ const CDICalculator = () => {
                       value={moderateThreshold}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow empty string for backspacing
+                        // Allow any input during typing (including partial values like "0." or "0.6")
+                        setModerateThreshold(value);
+                        setThresholdError('');
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value;
+                        // Reset to default if empty
                         if (value === '') {
-                          setModerateThreshold('');
+                          setModerateThreshold(0.66);
                           setThresholdError('');
                           return;
                         }
-                        handleModerateThresholdChange(value);
-                      }}
-                      onBlur={(e) => {
-                        // Reset to default only if empty
-                        if (e.target.value === '') {
+                        // Validate and format on blur
+                        if (validateThreshold(value, 'Moderate threshold')) {
+                          const num = parseFloat(value);
+                          setModerateThreshold(num);
+                          setEnableCustomThresholds(strongThreshold !== 0.33 || num !== 0.66);
+                        } else {
+                          // If invalid, reset to previous valid value or default
                           setModerateThreshold(0.66);
-                          setThresholdError('');
                         }
                       }}
                       className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
