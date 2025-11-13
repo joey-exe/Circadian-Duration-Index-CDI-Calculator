@@ -2,7 +2,10 @@
   "name": "cdi-calculator",
   "version": "3.1.1",
   "description": "Circadian Duration Index (CDI) Calculator with custom thresholds, phase shift analysis, and bottom 5% filtering for analyzing circadian behavior in mice",
-  "author": "Yeshuwa Taylor",
+  "author": {
+    "name": "Yeshuwa Taylor",
+    "email": "joey.taylor.exe@gmail.com"
+  },
   "license": "GPL-3.0",
   "contributors": [
     "Dr. Melissa E. Richardson PhD - Scientific Methodology"
@@ -18,26 +21,38 @@
     "free-running-period",
     "richardson-method"
   ],
-  "main": "index.js",
+  "main": "electron.js",
+  "homepage": "./",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "recharts": "^2.8.0",
-    "lucide-react": "^0.263.1"
+    "recharts": "^2.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
-    "tailwindcss": "^3.3.3",
     "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.27"
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.1.2",
+    "electron-builder": "^26.0.12",
+    "electron-is-dev": "^3.0.1",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.3.3",
+    "wait-on": "^9.0.3"
   },
   "browserslist": {
     "production": [
@@ -50,5 +65,58 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "build": {
+    "appId": "com.cdi.calculator",
+    "productName": "CDI Calculator",
+    "files": [
+      "build/**/*",
+      "electron.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "directories": {
+      "buildResources": "public",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.healthcare-fitness"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Science"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "extends": null
   }
 }

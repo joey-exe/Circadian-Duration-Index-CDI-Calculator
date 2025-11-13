@@ -8,7 +8,21 @@ A web-based calculator for the Circadian Duration Index (CDI) method created by 
 
 ## Quickstart
 
-### Installation
+### 🎉 NEW: Offline Executable Version Available!
+
+**Download ready-to-use desktop applications** (no installation required):
+
+#### Windows
+- **Download**: `CDI-Calculator-3.1.1-Windows-Portable.zip` from the `dist/` folder
+- **Usage**: Extract ZIP → Open `win-unpacked` folder → Run `CDI Calculator.exe`
+
+#### Linux
+- **Download**: `CDI Calculator-3.1.1.AppImage` from the `dist/` folder
+- **Usage**: `chmod +x "CDI Calculator-3.1.1.AppImage" && ./"CDI Calculator-3.1.1.AppImage"`
+
+📖 **See [OFFLINE_EXECUTABLE_GUIDE.md](OFFLINE_EXECUTABLE_GUIDE.md) for detailed instructions**
+
+### Web Version Installation
 ```bash
 # Clone or download this repository
 npm install
@@ -16,7 +30,7 @@ npm start
 ```
 
 ### Basic Usage
-1. **Launch**: Open `http://localhost:3000` in your browser
+1. **Launch**: Open `http://localhost:3000` in your browser (or use offline executable)
 2. **Input Data**: Copy/paste from CSV or upload file
 3. **Auto-Detection**: System automatically detects time resolution and days
 4. **Calculate**: Click "Calculate CDI" to get results
