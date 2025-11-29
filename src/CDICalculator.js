@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Upload, Download, Calculator, Info, AlertCircle, Moon, Sun } from 'lucide-react';
 
 const CDICalculator = () => {
-  const APP_VERSION = '3.1.2';
+  const APP_VERSION = '3.2.0';
 
   // Dark mode state - initialize from localStorage
   const [darkMode, setDarkMode] = useState(() => {
@@ -446,14 +446,32 @@ const CDICalculator = () => {
     for (let i = 0; i < normalizedData.length; i++) {
       const hour = (i * resolution / 60) % 24;
       const activity = normalizedData[i];
-      const isBottom5 = activity <= bottom5Threshold;
+
+      // Check if this bin is inside the optimal CDI window
+      // The window is from optimalStartBin to (optimalStartBin + minBinsTo95Percent)
+      // Need to handle circular wrapping
+      let inCDIWindow = false;
+      if (minBinsTo95Percent >= normalizedData.length) {
+        // Edge case: window spans entire period
+        inCDIWindow = true;
+      } else {
+        const endBin = optimalStartBin + minBinsTo95Percent;
+        if (endBin <= normalizedData.length) {
+          // Window doesn't wrap
+          inCDIWindow = i >= optimalStartBin && i < endBin;
+        } else {
+          // Window wraps around
+          inCDIWindow = i >= optimalStartBin || i < (endBin % normalizedData.length);
+        }
+      }
+
       cumSum += activity;
 
       hourlyData.push({
         bin: i,
         hour: Math.round(hour),
         activity: activity,
-        isBottom5: isBottom5,
+        inCDIWindow: inCDIWindow,
         cumulativePercent: (cumSum / totalActivity) * 100
       });
     }
@@ -1310,9 +1328,9 @@ const CDICalculator = () => {
                             <Cell
                               key={`cell-${index}`}
                               fill={
-                                entry.isBottom5
-                                  ? darkMode ? '#4b5563' : '#d1d5db'  // Bottom 5%: dark gray in light mode, lighter in dark mode
-                                  : darkMode ? '#818cf8' : '#6366f1'  // Top 95%: indigo in both modes
+                                entry.inCDIWindow
+                                  ? darkMode ? '#818cf8' : '#6366f1'  // Inside window: indigo
+                                  : darkMode ? '#4b5563' : '#d1d5db'  // Outside window: gray
                               }
                             />
                           ))
@@ -1323,11 +1341,11 @@ const CDICalculator = () => {
                   <div className="mt-3 flex items-center justify-center gap-6 text-sm">
                     <div className="flex items-center gap-2">
                       <div className={`w-4 h-4 rounded ${darkMode ? 'bg-indigo-400' : 'bg-indigo-600'}`}></div>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Top 95% Activity</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Inside 95% Window</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className={`w-4 h-4 rounded ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Bottom 5% (Filtered)</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Outside 95% Window</span>
                     </div>
                   </div>
                 </div>
