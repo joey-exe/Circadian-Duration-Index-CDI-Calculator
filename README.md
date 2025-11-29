@@ -2,7 +2,7 @@
 
 A web-based calculator for the Circadian Duration Index (CDI) method created by Richardson et al. (2023) for analyzing circadian behavior in mice. This tool allows researchers to calculate CDI scores from their own wheel-running or circadian activity data.
 
-**Version 3.1.1** - Now with custom thresholds, circadian phase shift, bottom 5% filtering, and enhanced UI
+**Version 3.2.1** - Now with dark/light mode toggle, enhanced visualizations, custom thresholds, and improved UI contrast
 
 ---
 
@@ -13,12 +13,12 @@ A web-based calculator for the Circadian Duration Index (CDI) method created by 
 **Download ready-to-use desktop applications** (no installation required):
 
 #### Windows
-- **Download**: `CDI-Calculator-3.1.1-Windows-Portable.zip` from the `dist/` folder
+- **Download**: `CDI-Calculator-3.2.1-Windows-Portable.zip` from the `dist/` folder
 - **Usage**: Extract ZIP → Open `win-unpacked` folder → Run `CDI Calculator.exe`
 
 #### Linux
-- **Download**: `CDI Calculator-3.1.1.AppImage` from the `dist/` folder
-- **Usage**: `chmod +x "CDI Calculator-3.1.1.AppImage" && ./"CDI Calculator-3.1.1.AppImage"`
+- **Download**: `CDI Calculator-3.2.1.AppImage` from the `dist/` folder
+- **Usage**: `chmod +x "CDI Calculator-3.2.1.AppImage" && ./"CDI Calculator-3.2.1.AppImage"`
 
 📖 **See [OFFLINE_EXECUTABLE_GUIDE.md](OFFLINE_EXECUTABLE_GUIDE.md) for detailed instructions**
 
@@ -418,7 +418,7 @@ Results can be exported in JSON format containing:
     "bottom5PercentFiltering": true
   },
   "timestamp": "2025-01-15T10:30:00.000Z",
-  "version": "3.1.1"
+  "version": "3.2.1"
 }
 ```
 
@@ -586,7 +586,34 @@ hour: Math.round(hour), // Changed from hour.toFixed(1)
 
 ### Version History
 
-#### Version 3.1.1 (Current)
+#### Version 3.2.1 (Current)
+- **Improved Dark Mode Contrast**: Enhanced readability and accessibility
+  - All input fields now have dark backgrounds (bg-gray-700) with light text (text-gray-100) in dark mode
+  - All textareas (Manual Input, CSV Data) have proper dark mode styling
+  - Text labels use lighter colors (text-gray-300/400) for better readability
+  - CDI Guide panel, threshold inputs, and footer all have dark mode styling
+  - Enhanced Features box has distinctive dark mode appearance with border
+  - "No Results" panel properly styled for dark mode
+  - Ensures all UI elements maintain readability in both light and dark modes
+
+#### Version 3.2.0
+- **CDI Window Visualization**: Changed visualization to show optimal 95% window
+  - Visualization now shows bins INSIDE vs OUTSIDE the optimal consecutive window
+  - Dark blue/indigo bars represent bins inside the 95% activity window
+  - Gray bars represent bins outside the optimal window
+  - More scientifically accurate representation of CDI results
+  - Better for research purposes (shows Richardson's intended interpretation)
+  - Fixed from previous implementation that showed bottom 5% filtering instead
+
+#### Version 3.1.2
+- **Dark/Light Mode Toggle**: Added theme switching with localStorage persistence
+  - Moon/Sun icon toggle button in header
+  - Theme preference saved and restored between sessions
+  - Distinctive visualization colors in both modes
+  - Charts automatically adapt to selected theme
+  - Smooth color transitions throughout the UI
+
+#### Version 3.1.1
 - **Two-Line Threshold Labels**: Improved readability in CDI Interpretation section
   - Changed threshold labels to display on two lines using `<br/>` tags
   - "Strong consolidation" → "Strong" / "consolidation"
@@ -740,7 +767,7 @@ hour: Math.round(hour), // Changed from hour.toFixed(1)
    - Tutorial mode for new users
    - Comprehensive help documentation
    - Keyboard shortcuts
-   - Dark mode support
+   - ~~Dark mode support~~ ✅ Completed in v3.1.2
    - Accessibility improvements
    - Mobile app version
 

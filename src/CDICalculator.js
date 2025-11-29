@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Upload, Download, Calculator, Info, AlertCircle, Moon, Sun } from 'lucide-react';
 
 const CDICalculator = () => {
-  const APP_VERSION = '3.1.2';
+  const APP_VERSION = '3.2.1';
 
   // Dark mode state - initialize from localStorage
   const [darkMode, setDarkMode] = useState(() => {
@@ -446,14 +446,32 @@ const CDICalculator = () => {
     for (let i = 0; i < normalizedData.length; i++) {
       const hour = (i * resolution / 60) % 24;
       const activity = normalizedData[i];
-      const isBottom5 = activity <= bottom5Threshold;
+
+      // Check if this bin is inside the optimal CDI window
+      // The window is from optimalStartBin to (optimalStartBin + minBinsTo95Percent)
+      // Need to handle circular wrapping
+      let inCDIWindow = false;
+      if (minBinsTo95Percent >= normalizedData.length) {
+        // Edge case: window spans entire period
+        inCDIWindow = true;
+      } else {
+        const endBin = optimalStartBin + minBinsTo95Percent;
+        if (endBin <= normalizedData.length) {
+          // Window doesn't wrap
+          inCDIWindow = i >= optimalStartBin && i < endBin;
+        } else {
+          // Window wraps around
+          inCDIWindow = i >= optimalStartBin || i < (endBin % normalizedData.length);
+        }
+      }
+
       cumSum += activity;
 
       hourlyData.push({
         bin: i,
         hour: Math.round(hour),
         activity: activity,
-        isBottom5: isBottom5,
+        inCDIWindow: inCDIWindow,
         cumulativePercent: (cumSum / totalActivity) * 100
       });
     }
@@ -778,7 +796,7 @@ const CDICalculator = () => {
                     className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     disabled={!multiDay}
                   />
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Enable phase shift per day
                   </span>
                 </label>
@@ -820,7 +838,7 @@ const CDICalculator = () => {
 
                     {!autoCalculateShift && (
                       <div>
-                        <label className="block text-xs text-gray-600 mb-1">
+                        <label className={`block text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           Phase shift per day (hours):
                         </label>
                         <input
@@ -830,7 +848,11 @@ const CDICalculator = () => {
                           min="-12"
                           max="12"
                           step="0.1"
-                          className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          className={`w-full p-2 text-sm border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                            darkMode
+                              ? 'bg-gray-700 border-gray-600 text-gray-100'
+                              : 'bg-white border-gray-300 text-gray-900'
+                          }`}
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Manual: {hourShiftPerDay > 0 ? '+' : ''}{hourShiftPerDay.toFixed(2)}h shift/day
@@ -867,7 +889,7 @@ const CDICalculator = () => {
                     onChange={(e) => setEnableCustomPeriod(e.target.checked)}
                     className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Custom circadian period (non-24h)
                   </span>
                 </label>
@@ -877,7 +899,7 @@ const CDICalculator = () => {
                 
                 {enableCustomPeriod && (
                   <div className="mt-2">
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className={`block text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                       Period (hours):
                     </label>
                     <input
@@ -887,7 +909,11 @@ const CDICalculator = () => {
                       min="20"
                       max="28"
                       step="0.1"
-                      className="w-full p-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className={`w-full p-2 text-sm border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                        darkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-100'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Range: 20-28 hours (circadian range)
@@ -937,7 +963,7 @@ const CDICalculator = () => {
               {/* Manual Input */}
               {activeTab === 'manual' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Activity Data
                   </label>
                   <textarea
@@ -955,7 +981,11 @@ const CDICalculator = () => {
                       }
                     }}
                     placeholder="Copy and paste data from CSV or similar table..."
-                    className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={`w-full h-32 p-3 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                    }`}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Copy and paste numerical values from CSV files or data tables
@@ -966,7 +996,7 @@ const CDICalculator = () => {
               {/* CSV Upload */}
               {activeTab === 'csv' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Upload CSV File
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-indigo-400 transition-colors">
@@ -986,11 +1016,15 @@ const CDICalculator = () => {
                   
                   {csvData && (
                     <div className="mt-3">
-                      <p className="text-sm text-green-600 mb-2">CSV Data Loaded</p>
+                      <p className={`text-sm mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>CSV Data Loaded</p>
                       <textarea
                         value={csvData}
                         onChange={(e) => setCsvData(e.target.value)}
-                        className="w-full h-64 p-2 text-xs font-mono border border-gray-300 rounded-md bg-gray-50 overflow-auto"
+                        className={`w-full h-64 p-2 text-xs font-mono border rounded-md overflow-auto ${
+                          darkMode
+                            ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                            : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'
+                        }`}
                         placeholder="Paste CSV data here..."
                       />
                     </div>
@@ -1030,10 +1064,10 @@ const CDICalculator = () => {
             </div>
 
               {/* CDI Guide */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+            <div className={`rounded-lg shadow-lg p-6 mt-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <div className="flex items-center gap-2 mb-3">
-                <Info className="w-5 h-5 text-blue-500" />
-                <h3 className="text-lg font-semibold text-gray-800">CDI Interpretation</h3>
+                <Info className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                <h3 className={`text-lg font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>CDI Interpretation</h3>
               </div>
 
               {/* Threshold Error Message */}
@@ -1081,9 +1115,13 @@ const CDICalculator = () => {
                           setStrongThreshold(0.33);
                         }
                       }}
-                      className="w-20 px-2 py-1.5 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium"
+                      className={`w-20 px-2 py-1.5 text-sm text-center border rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium ${
+                        darkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-100'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                     />
-                    <p className="text-sm text-gray-700 flex-1">Strong<br/>consolidation</p>
+                    <p className={`text-sm flex-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Strong<br/>consolidation</p>
                   </div>
                 </div>
 
@@ -1092,8 +1130,8 @@ const CDICalculator = () => {
                   <div className="w-5 h-5 bg-yellow-500 rounded flex-shrink-0"></div>
                   <div className="flex items-center gap-2 flex-1">
                     <div className="w-14 flex items-center justify-center gap-1">
-                      <span className="font-semibold text-xs">{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
-                      <span className="font-semibold">-</span>
+                      <span className={`font-semibold text-xs ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{strongThreshold ? (parseFloat(strongThreshold) + 0.01).toFixed(2) : '0.34'}</span>
+                      <span className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>-</span>
                     </div>
                     <input
                       type="text"
@@ -1122,9 +1160,13 @@ const CDICalculator = () => {
                           setModerateThreshold(0.66);
                         }
                       }}
-                      className="w-20 px-2 py-1.5 text-sm text-center border border-gray-300 rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium"
+                      className={`w-20 px-2 py-1.5 text-sm text-center border rounded hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium ${
+                        darkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-100'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                     />
-                    <p className="text-sm text-gray-700 flex-1">Moderate<br/>consolidation</p>
+                    <p className={`text-sm flex-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Moderate<br/>consolidation</p>
                   </div>
                 </div>
 
@@ -1133,25 +1175,29 @@ const CDICalculator = () => {
                   <div className="w-5 h-5 bg-red-500 rounded flex-shrink-0"></div>
                   <div className="flex items-center gap-2 flex-1">
                     <div className="w-14 flex items-center justify-center">
-                      <span className="font-semibold">≥</span>
+                      <span className={`font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>≥</span>
                     </div>
-                    <span className="w-20 px-2 py-1.5 text-sm text-center font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded">
+                    <span className={`w-20 px-2 py-1.5 text-sm text-center font-medium border rounded ${
+                      darkMode
+                        ? 'text-gray-300 bg-gray-700 border-gray-600'
+                        : 'text-gray-700 bg-gray-50 border-gray-200'
+                    }`}>
                       {moderateThreshold ? (parseFloat(moderateThreshold) + 0.01).toFixed(2) : '0.67'}
                     </span>
-                    <p className="text-sm text-gray-700 flex-1">Weak/absent<br/>consolidation</p>
+                    <p className={`text-sm flex-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Weak/absent<br/>consolidation</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 p-2 bg-gray-50 rounded-md">
-                <p className="text-xs text-gray-600">
+              <div className={`mt-3 p-2 rounded-md ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <p className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   <strong>Click threshold values to edit.</strong> Valid range: 0.0001-1.0000 (max 4 decimals)
                 </p>
               </div>
 
-              <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                <h4 className="text-sm font-semibold text-blue-800 mb-2">Enhanced Features:</h4>
-                <ul className="text-xs text-blue-700 space-y-1">
+              <div className={`mt-4 p-3 rounded-md ${darkMode ? 'bg-blue-900/30 border border-blue-800' : 'bg-blue-50'}`}>
+                <h4 className={`text-sm font-semibold mb-2 ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>Enhanced Features:</h4>
+                <ul className={`text-xs space-y-1 ${darkMode ? 'text-blue-200' : 'text-blue-700'}`}>
                   <li>• Custom circadian periods (20-28h)</li>
                   <li>• ClockLab-compatible period detection</li>
                   <li>• Consistent activity start point detection</li>
@@ -1310,9 +1356,9 @@ const CDICalculator = () => {
                             <Cell
                               key={`cell-${index}`}
                               fill={
-                                entry.isBottom5
-                                  ? darkMode ? '#4b5563' : '#d1d5db'  // Bottom 5%: dark gray in light mode, lighter in dark mode
-                                  : darkMode ? '#818cf8' : '#6366f1'  // Top 95%: indigo in both modes
+                                entry.inCDIWindow
+                                  ? darkMode ? '#818cf8' : '#6366f1'  // Inside window: indigo
+                                  : darkMode ? '#4b5563' : '#d1d5db'  // Outside window: gray
                               }
                             />
                           ))
@@ -1323,11 +1369,11 @@ const CDICalculator = () => {
                   <div className="mt-3 flex items-center justify-center gap-6 text-sm">
                     <div className="flex items-center gap-2">
                       <div className={`w-4 h-4 rounded ${darkMode ? 'bg-indigo-400' : 'bg-indigo-600'}`}></div>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Top 95% Activity</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Inside 95% Window</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className={`w-4 h-4 rounded ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Bottom 5% (Filtered)</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Outside 95% Window</span>
                     </div>
                   </div>
                 </div>
@@ -1382,11 +1428,11 @@ const CDICalculator = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-lg p-6 h-full flex items-center justify-center">
+              <div className={`rounded-lg shadow-lg p-6 h-full flex items-center justify-center ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <div className="text-center">
-                  <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-500 mb-2">No Results Yet</h3>
-                  <p className="text-gray-400">Enter activity data and click "Calculate CDI" to see results</p>
+                  <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                  <h3 className={`text-lg font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No Results Yet</h3>
+                  <p className={darkMode ? 'text-gray-500' : 'text-gray-400'}>Enter activity data and click "Calculate CDI" to see results</p>
                 </div>
               </div>
             )}
@@ -1394,8 +1440,10 @@ const CDICalculator = () => {
         </div>
 
         {/* Footer */}
-        <div className="bg-white rounded-lg shadow-lg p-4 mt-6 text-center text-sm text-gray-500">
-          Based on the Circadian Duration Index method by Richardson, M.E.S., et al. (2023). 
+        <div className={`rounded-lg shadow-lg p-4 mt-6 text-center text-sm ${
+          darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
+        }`}>
+          Based on the Circadian Duration Index method by Richardson, M.E.S., et al. (2023).
           <em>Scientific Reports</em>, 13(1), 14423.<br/>
           <small>Tool created by Yeshuwa Taylor | Methodology by Dr. Melissa E. Richardson PhD</small><br/>
           <small>Technical Support: joey.taylor.exe@gmail.com | Research Questions: mrichardson@oakwood.edu</small>
