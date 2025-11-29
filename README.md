@@ -2,7 +2,7 @@
 
 A web-based calculator for the Circadian Duration Index (CDI) method created by Richardson et al. (2023) for analyzing circadian behavior in mice. This tool allows researchers to calculate CDI scores from their own wheel-running or circadian activity data.
 
-**Version 3.2.1** - Now with dark/light mode toggle, enhanced visualizations, custom thresholds, and improved UI contrast
+**Version 3.2.2** - Now with dark/light mode toggle, enhanced visualizations, custom thresholds, and improved UI contrast
 
 ---
 
@@ -13,12 +13,12 @@ A web-based calculator for the Circadian Duration Index (CDI) method created by 
 **Download ready-to-use desktop applications** (no installation required):
 
 #### Windows
-- **Download**: `CDI-Calculator-3.2.1-Windows-Portable.zip` from the `dist/` folder
+- **Download**: `CDI-Calculator-3.2.2-Windows-Portable.zip` from the `dist/` folder
 - **Usage**: Extract ZIP → Open `win-unpacked` folder → Run `CDI Calculator.exe`
 
 #### Linux
-- **Download**: `CDI Calculator-3.2.1.AppImage` from the `dist/` folder
-- **Usage**: `chmod +x "CDI Calculator-3.2.1.AppImage" && ./"CDI Calculator-3.2.1.AppImage"`
+- **Download**: `CDI Calculator-3.2.2.AppImage` from the `dist/` folder
+- **Usage**: `chmod +x "CDI Calculator-3.2.2.AppImage" && ./"CDI Calculator-3.2.2.AppImage"`
 
 📖 **See [OFFLINE_EXECUTABLE_GUIDE.md](OFFLINE_EXECUTABLE_GUIDE.md) for detailed instructions**
 
@@ -418,7 +418,7 @@ Results can be exported in JSON format containing:
     "bottom5PercentFiltering": true
   },
   "timestamp": "2025-01-15T10:30:00.000Z",
-  "version": "3.2.1"
+  "version": "3.2.2"
 }
 ```
 
@@ -586,7 +586,17 @@ hour: Math.round(hour), // Changed from hour.toFixed(1)
 
 ### Version History
 
-#### Version 3.2.1 (Current)
+#### Version 3.2.2 (Current)
+- **Auto-Detection Panels Dark Mode**: Completed dark mode styling for all status panels
+  - Time Resolution panel: Dark blue background with light text in dark mode
+  - Auto-detected Days panel: Dark green background with light text in dark mode
+  - Multi-day data detected panel: Dark blue background with light text in dark mode
+  - Detected Period panel: Dark purple background with light text in dark mode
+  - All panels use consistent semi-transparent backgrounds (/30 opacity) with matching borders
+  - Proper text contrast with lighter colors (300/200 shades) for better readability
+  - Completes the dark mode implementation across the entire application
+
+#### Version 3.2.1
 - **Improved Dark Mode Contrast**: Enhanced readability and accessibility
   - All input fields now have dark backgrounds (bg-gray-700) with light text (text-gray-100) in dark mode
   - All textareas (Manual Input, CSV Data) have proper dark mode styling

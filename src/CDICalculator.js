@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Upload, Download, Calculator, Info, AlertCircle, Moon, Sun } from 'lucide-react';
 
 const CDICalculator = () => {
-  const APP_VERSION = '3.2.1';
+  const APP_VERSION = '3.2.2';
 
   // Dark mode state - initialize from localStorage
   const [darkMode, setDarkMode] = useState(() => {

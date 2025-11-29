@@ -5,7 +5,7 @@
 Your offline executables are ready in the `dist/` folder!
 
 ### Windows Users (Recommended)
-**Download**: `CDI-Calculator-3.2.1-Windows-Portable.zip` (214 MB)
+**Download**: `CDI-Calculator-3.2.2-Windows-Portable.zip` (214 MB)
 
 **How to Use:**
 1. Extract the ZIP file to any folder
@@ -18,20 +18,20 @@ Your offline executables are ready in the `dist/` folder!
 ### Linux Users
 
 #### Option 1: AppImage (Recommended - Works on any Linux distro)
-**Download**: `CDI Calculator-3.2.1.AppImage` (194 MB)
+**Download**: `CDI Calculator-3.2.2.AppImage` (194 MB)
 
 **How to Use:**
 ```bash
-chmod +x "CDI Calculator-3.2.1.AppImage"
-./"CDI Calculator-3.2.1.AppImage"
+chmod +x "CDI Calculator-3.2.2.AppImage"
+./"CDI Calculator-3.2.2.AppImage"
 ```
 
 #### Option 2: Debian Package (Ubuntu, Debian, Mint, etc.)
-**Download**: `cdi-calculator_3.2.1_amd64.deb` (136 MB)
+**Download**: `cdi-calculator_3.2.2_amd64.deb` (136 MB)
 
 **How to Install:**
 ```bash
-sudo dpkg -i cdi-calculator_3.2.1_amd64.deb
+sudo dpkg -i cdi-calculator_3.2.2_amd64.deb
 # Or double-click in file manager to install via Software Center
 ```
 
@@ -44,10 +44,10 @@ cdi-calculator
 
 | File | Size | Platform | Type | Recommended |
 |------|------|----------|------|-------------|
-| `CDI-Calculator-3.2.1-Windows-Portable.zip` | 214 MB | Windows | Portable | ✅ **YES** |
-| `CDI Calculator-3.2.1.AppImage` | 194 MB | Linux | Portable | ✅ **YES** |
-| `cdi-calculator_3.2.1_amd64.deb` | 136 MB | Debian/Ubuntu | Installable | ✅ **YES** |
-| `CDI Calculator Setup 3.2.1.exe` | 185 KB | Windows | Installer | ❌ Incomplete |
+| `CDI-Calculator-3.2.2-Windows-Portable.zip` | 214 MB | Windows | Portable | ✅ **YES** |
+| `CDI Calculator-3.2.2.AppImage` | 194 MB | Linux | Portable | ✅ **YES** |
+| `cdi-calculator_3.2.2_amd64.deb` | 136 MB | Debian/Ubuntu | Installable | ✅ **YES** |
+| `CDI Calculator Setup 3.2.2.exe` | 185 KB | Windows | Installer | ❌ Incomplete |
 
 ## ✨ Features
 
@@ -167,7 +167,7 @@ The AppImage needs execute permission.
 
 **Solution:**
 ```bash
-chmod +x "CDI Calculator-3.2.1.AppImage"
+chmod +x "CDI Calculator-3.2.2.AppImage"
 ```
 
 ### Linux: AppImage Won't Run
@@ -182,7 +182,7 @@ sudo apt install fuse libfuse2
 sudo dnf install fuse fuse-libs
 
 # Or extract and run directly
-./"CDI Calculator-3.2.1.AppImage" --appimage-extract
+./"CDI Calculator-3.2.2.AppImage" --appimage-extract
 ./squashfs-root/AppRun
 ```
 
@@ -190,7 +190,7 @@ sudo dnf install fuse fuse-libs
 1. Check system requirements
 2. Try running from terminal to see error messages:
    - Windows: Open terminal in the folder and run `"CDI Calculator.exe"`
-   - Linux: Run from terminal with `./"CDI Calculator-3.2.1.AppImage"`
+   - Linux: Run from terminal with `./"CDI Calculator-3.2.2.AppImage"`
 3. Check antivirus/firewall settings
 
 ### Application Crashes
@@ -240,6 +240,15 @@ If using this tool in research, please cite:
 **Richardson, M.E.S., et al. (2023)**. "Reversible suppression of circadian-driven locomotor rhythms in mice using a gradual fragmentation of the day-night cycle." *Scientific Reports*, 13(1), 14423. https://doi.org/10.1038/s41598-023-41029-0
 
 ## 📚 Version History
+
+### v3.2.2 - Auto-Detection Panels Dark Mode (Current)
+- ✅ Dark mode styling for all auto-detection status panels
+- ✅ Time Resolution, Auto-detected Days, Multi-day data, and Detected Period panels
+- ✅ Consistent semi-transparent backgrounds with proper contrast
+- ✅ Completes dark mode implementation across entire application
+- ✅ Windows portable executable (.zip)
+- ✅ Linux AppImage (portable)
+- ✅ Linux Debian package (.deb)
 
 ### v3.2.1 - Dark Mode Contrast Update
 - ✅ Improved dark mode contrast and readability
@@ -291,4 +300,4 @@ If using this tool in research, please cite:
 
 **Made with ❤️ for Circadian Research**
 
-Version: 3.2.1 | Updated: November 2025
+Version: 3.2.2 | Updated: November 2025
