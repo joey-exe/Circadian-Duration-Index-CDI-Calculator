@@ -740,14 +740,18 @@ const CDICalculator = () => {
               
               {/* Auto-detected Resolution Display */}
               {autoDetectedDays && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className={`mb-4 p-3 border rounded-md ${
+                  darkMode
+                    ? 'bg-blue-900/30 border-blue-800'
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-blue-800">
+                    <span className={`text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
                       Time Resolution: {resolution} minutes
                     </span>
                   </div>
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className={`text-xs mt-1 ${darkMode ? 'text-blue-200' : 'text-blue-600'}`}>
                     Auto-detected from data structure
                   </p>
                 </div>
@@ -755,14 +759,18 @@ const CDICalculator = () => {
 
               {/* Auto-detected Days Display */}
               {autoDetectedDays && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className={`mb-4 p-3 border rounded-md ${
+                  darkMode
+                    ? 'bg-green-900/30 border-green-800'
+                    : 'bg-green-50 border-green-200'
+                }`}>
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-800">
+                    <span className={`text-sm font-medium ${darkMode ? 'text-green-300' : 'text-green-800'}`}>
                       Auto-detected: {autoDetectedDays} day{autoDetectedDays > 1 ? 's' : ''} of data
                     </span>
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className={`text-xs mt-1 ${darkMode ? 'text-green-200' : 'text-green-600'}`}>
                     Supports 1-14 days | Auto-detected from data structure
                   </p>
                 </div>
@@ -770,16 +778,20 @@ const CDICalculator = () => {
 
               {/* Multi-day checkbox - now auto-managed */}
               <div className="mb-4">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className={`p-3 border rounded-md ${
+                  darkMode
+                    ? 'bg-blue-900/30 border-blue-800'
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-blue-800">
+                    <span className={`text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
                       {multiDay ? 'Multi-day data detected' : 'Single-day data detected'}
                     </span>
                   </div>
-                  <p className="text-xs text-blue-600 mt-1">
-                    {multiDay 
-                      ? 'Data will be averaged across multiple days' 
+                  <p className={`text-xs mt-1 ${darkMode ? 'text-blue-200' : 'text-blue-600'}`}>
+                    {multiDay
+                      ? 'Data will be averaged across multiple days'
                       : 'Processing single day of data'
                     }
                   </p>
@@ -924,17 +936,21 @@ const CDICalculator = () => {
 
               {/* Detected Period Display */}
               {detectedPeriod && (
-                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-md">
+                <div className={`mb-4 p-3 border rounded-md ${
+                  darkMode
+                    ? 'bg-purple-900/30 border-purple-800'
+                    : 'bg-purple-50 border-purple-200'
+                }`}>
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-purple-800">
+                    <span className={`text-sm font-medium ${darkMode ? 'text-purple-300' : 'text-purple-800'}`}>
                       Detected Period: {detectedPeriod.period.toFixed(1)}h
                     </span>
                   </div>
-                  <p className="text-xs text-purple-600 mt-1">
+                  <p className={`text-xs mt-1 ${darkMode ? 'text-purple-200' : 'text-purple-600'}`}>
                     Confidence: {detectedPeriod.confidence} (r={detectedPeriod.correlation.toFixed(3)})
                   </p>
-                  <p className="text-xs text-purple-600">
+                  <p className={`text-xs ${darkMode ? 'text-purple-200' : 'text-purple-600'}`}>
                     ClockLab-compatible autocorrelation analysis
                   </p>
                 </div>
