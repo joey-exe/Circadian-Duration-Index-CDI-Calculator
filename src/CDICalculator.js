@@ -1,9 +1,20 @@
-import React, { useState, useCallback } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Upload, Download, Calculator, Info, AlertCircle } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { Upload, Download, Calculator, Info, AlertCircle, Moon, Sun } from 'lucide-react';
 
 const CDICalculator = () => {
   const APP_VERSION = '3.1.1';
+
+  // Dark mode state - initialize from localStorage
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('cdi-dark-mode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Save dark mode preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('cdi-dark-mode', JSON.stringify(darkMode));
+  }, [darkMode]);
 
   const [data, setData] = useState([]);
   const [results, setResults] = useState(null);
@@ -435,12 +446,14 @@ const CDICalculator = () => {
     for (let i = 0; i < normalizedData.length; i++) {
       const hour = (i * resolution / 60) % 24;
       const activity = normalizedData[i];
+      const isBottom5 = activity <= bottom5Threshold;
       cumSum += activity;
-      
+
       hourlyData.push({
         bin: i,
         hour: Math.round(hour),
         activity: activity,
+        isBottom5: isBottom5,
         cumulativePercent: (cumSum / totalActivity) * 100
       });
     }
@@ -653,31 +666,59 @@ const CDICalculator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className={`min-h-screen p-4 transition-colors ${
+      darkMode
+        ? 'bg-gradient-to-br from-gray-900 to-gray-800'
+        : 'bg-gradient-to-br from-blue-50 to-indigo-100'
+    }`}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className={`rounded-lg shadow-lg p-6 mb-6 ${
+          darkMode ? 'bg-gray-800' : 'bg-white'
+        }`}>
           <div className="flex items-center gap-3 mb-4">
-            <Calculator className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-3xl font-bold text-gray-800">Circadian Duration Index (CDI) Calculator</h1>
-            <span className="ml-auto px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-semibold rounded-full">
+            <Calculator className={`w-8 h-8 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+            <h1 className={`text-3xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+              Circadian Duration Index (CDI) Calculator
+            </h1>
+            <span className={`ml-auto px-3 py-1 text-sm font-semibold rounded-full ${
+              darkMode
+                ? 'bg-indigo-900 text-indigo-300'
+                : 'bg-indigo-100 text-indigo-700'
+            }`}>
               v{APP_VERSION}
             </span>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-lg transition-colors ${
+                darkMode
+                  ? 'bg-gray-700 hover:bg-gray-600 text-yellow-400'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
           </div>
-          <p className="text-gray-600">
+          <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
             Calculate the fraction of a circadian period needed to complete 95% of total activity.
             Supports both 24-hour and custom circadian periods (20-28h). Features ClockLab-compatible
             period detection and enhanced activity start point detection.<br/>
             Based on the method developed by Richardson et al. (2023).<br/>
-            <small className="text-gray-500">Tool created by Yeshuwa Taylor | Methodology by Dr. Melissa E. Richardson PhD</small>
+            <small className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+              Tool created by Yeshuwa Taylor | Methodology by Dr. Melissa E. Richardson PhD
+            </small>
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Input Panel */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Data Input</h2>
+            <div className={`rounded-lg shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                Data Input
+              </h2>
               
               {/* Auto-detected Resolution Display */}
               {autoDetectedDays && (
@@ -1236,51 +1277,102 @@ const CDICalculator = () => {
                 </div>
 
                 {/* Activity Distribution Chart */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                <div className={`rounded-lg shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                     {Math.round(results.periodHours)}-Hour Activity Distribution
                   </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={results.hourlyData.filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 48)) === 0)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="hour" 
+                      <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                      <XAxis
+                        dataKey="hour"
                         label={{ value: 'Hour of Day', position: 'insideBottom', offset: -5 }}
+                        stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                        tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
                       />
-                      <YAxis label={{ value: 'Activity', angle: -90, position: 'insideLeft' }} />
-                      <Tooltip />
-                      <Bar dataKey="activity" fill="#6366f1" />
+                      <YAxis
+                        label={{ value: 'Activity', angle: -90, position: 'insideLeft' }}
+                        stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                        tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: darkMode ? '#374151' : '#ffffff',
+                          border: `1px solid ${darkMode ? '#4b5563' : '#e5e7eb'}`,
+                          borderRadius: '8px',
+                          color: darkMode ? '#f3f4f6' : '#1f2937'
+                        }}
+                      />
+                      <Bar dataKey="activity">
+                        {results.hourlyData
+                          .filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 48)) === 0)
+                          .map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={
+                                entry.isBottom5
+                                  ? darkMode ? '#4b5563' : '#d1d5db'  // Bottom 5%: dark gray in light mode, lighter in dark mode
+                                  : darkMode ? '#818cf8' : '#6366f1'  // Top 95%: indigo in both modes
+                              }
+                            />
+                          ))
+                        }
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+                  <div className="mt-3 flex items-center justify-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded ${darkMode ? 'bg-indigo-400' : 'bg-indigo-600'}`}></div>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Top 95% Activity</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Bottom 5% (Filtered)</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Cumulative Activity Chart */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Cumulative Activity (95% Threshold)</h3>
+                <div className={`rounded-lg shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    Cumulative Activity (95% Threshold)
+                  </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={results.hourlyData.filter((_, i) => i % Math.max(1, Math.floor(results.hourlyData.length / 100)) === 0)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="bin" 
+                      <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#e5e7eb'} />
+                      <XAxis
+                        dataKey="bin"
                         label={{ value: 'Time Bin', position: 'insideBottom', offset: -5 }}
+                        stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                        tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
                       />
-                      <YAxis 
+                      <YAxis
                         domain={[0, 100]}
                         label={{ value: 'Cumulative %', angle: -90, position: 'insideLeft' }}
+                        stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                        tick={{ fill: darkMode ? '#9ca3af' : '#6b7280' }}
                       />
-                      <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Cumulative Activity']} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="cumulativePercent" 
-                        stroke="#10b981" 
+                      <Tooltip
+                        formatter={(value) => [`${value.toFixed(1)}%`, 'Cumulative Activity']}
+                        contentStyle={{
+                          backgroundColor: darkMode ? '#374151' : '#ffffff',
+                          border: `1px solid ${darkMode ? '#4b5563' : '#e5e7eb'}`,
+                          borderRadius: '8px',
+                          color: darkMode ? '#f3f4f6' : '#1f2937'
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="cumulativePercent"
+                        stroke={darkMode ? '#34d399' : '#10b981'}
                         strokeWidth={2}
                         dot={false}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey={() => 95} 
-                        stroke="#ef4444" 
-                        strokeWidth={2} 
+                      <Line
+                        type="monotone"
+                        dataKey={() => 95}
+                        stroke={darkMode ? '#f87171' : '#ef4444'}
+                        strokeWidth={2}
                         strokeDasharray="5 5"
                         dot={false}
                         name="95% Threshold"
